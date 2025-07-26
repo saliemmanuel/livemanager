@@ -143,8 +143,12 @@ def create_live(request):
         return redirect("dashboard")
 
     if request.method == "POST":
+        print(f"[DEBUG] Création de live - Utilisateur: {request.user.username}")
+        print(f"[DEBUG] Fichiers reçus: {list(request.FILES.keys())}")
+        
         form = LiveForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
+            print("[DEBUG] Formulaire valide")
             try:
                 live = form.save(commit=False)
                 live.user = request.user
@@ -152,6 +156,7 @@ def create_live(request):
                 # Upload normal via navigateur
                 if "video_file" in request.FILES:
                     video_file = request.FILES["video_file"]
+                    print(f"[DEBUG] Fichier vidéo reçu: {video_file.name}, taille: {video_file.size}")
 
                     # Créer un fichier temporaire pour la vidéo compressée
                     with tempfile.NamedTemporaryFile(
@@ -161,6 +166,7 @@ def create_live(request):
                         for chunk in video_file.chunks():
                             temp_file.write(chunk)
                         temp_file_path = temp_file.name
+                        print(f"[DEBUG] Fichier temporaire créé: {temp_file_path}")
 
                     try:
                         # Décompresser la vidéo avec FFmpeg
@@ -168,6 +174,7 @@ def create_live(request):
                             "media", "videos", f"decompressed_{video_file.name}"
                         )
                         os.makedirs(os.path.dirname(output_path), exist_ok=True)
+                        print(f"[DEBUG] Chemin de sortie: {output_path}")
 
                         # Commande FFmpeg pour décompresser et optimiser
                         ffmpeg_cmd = [
@@ -187,6 +194,7 @@ def create_live(request):
                             "-y",  # Écraser si existe
                             output_path,
                         ]
+                        print(f"[DEBUG] Commande FFmpeg: {' '.join(ffmpeg_cmd)}")
 
                         # Exécuter FFmpeg
                         result = subprocess.run(
@@ -195,19 +203,25 @@ def create_live(request):
                             text=True,
                             timeout=300,  # 5 minutes max
                         )
+                        print(f"[DEBUG] FFmpeg returncode: {result.returncode}")
+                        if result.returncode != 0:
+                            print(f"[DEBUG] FFmpeg stderr: {result.stderr}")
 
                         if result.returncode == 0:
                             # Sauvegarder le chemin de la vidéo décompressée
                             live.video_file = f"videos/decompressed_{video_file.name}"
                             live.save()
+                            print(f"[DEBUG] Live sauvegardé avec succès: {live.id}")
 
                             # Nettoyer le fichier temporaire
                             os.unlink(temp_file_path)
+                            print("[DEBUG] Fichier temporaire supprimé")
 
                             if (
                                 request.headers.get("X-Requested-With")
                                 == "XMLHttpRequest"
                             ):
+                                print("[DEBUG] Réponse AJAX de succès")
                                 return JsonResponse(
                                     {
                                         "success": True,
@@ -228,6 +242,7 @@ def create_live(request):
                             raise Exception(f"Erreur FFmpeg: {result.stderr}")
 
                     except Exception as e:
+                        print(f"[DEBUG] Exception lors du traitement vidéo: {str(e)}")
                         # Nettoyer le fichier temporaire en cas d'erreur
                         if os.path.exists(temp_file_path):
                             os.unlink(temp_file_path)
@@ -236,6 +251,7 @@ def create_live(request):
                 else:
                     # Pas de fichier vidéo, sauvegarder normalement
                     live.save()
+                    print(f"[DEBUG] Live sauvegardé sans vidéo: {live.id}")
 
                     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                         return JsonResponse(
@@ -250,6 +266,7 @@ def create_live(request):
                     return redirect("dashboard")
 
             except Exception as e:
+                print(f"[DEBUG] Exception générale: {str(e)}")
                 if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                     return JsonResponse(
                         {
@@ -261,6 +278,7 @@ def create_live(request):
                 else:
                     messages.error(request, f"Erreur lors de la création: {str(e)}")
         else:
+            print(f"[DEBUG] Formulaire invalide: {form.errors}")
             if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                 return JsonResponse(
                     {

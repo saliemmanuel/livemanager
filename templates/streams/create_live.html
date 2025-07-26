@@ -291,42 +291,69 @@ function uploadFileWithRetry(file, onProgress, onDone, onError, maxRetries = 3) 
             }
         });
         xhr.addEventListener('load', function() {
+            console.log('Upload terminé, status:', xhr.status);
+            console.log('Response:', xhr.responseText.substring(0, 200) + '...');
+            
             if (xhr.status === 200) {
                 try {
                     const response = JSON.parse(xhr.responseText);
                     if (response.success) {
+                        console.log('Succès, redirection vers:', response.redirect_url || '{% url "dashboard" %}');
                         window.location.href = response.redirect_url || '{% url "dashboard" %}';
                     } else {
-                        if (attempt < maxRetries) {
-                            attempt++;
-                            setTimeout(tryUpload, 1000 * attempt);
-                        } else {
-                            onError('Erreur lors de l\'upload: ' + response.message);
-                        }
+                        console.log('Erreur dans la réponse:', response.message);
+                        onError('Erreur lors de l\'upload: ' + response.message);
                     }
                 } catch (e) {
-                    window.location.href = '{% url "dashboard" %}';
+                    console.log('Erreur parsing JSON:', e);
+                    console.log('Response reçue:', xhr.responseText);
+                    // Si ce n'est pas du JSON, c'est probablement une erreur HTML
+                    onError('Erreur serveur: Réponse invalide reçue');
                 }
-            } else {
+            } else if (xhr.status >= 400 && xhr.status < 500) {
+                // Erreurs client (400-499) - ne pas retry
+                console.log('Erreur client:', xhr.status, xhr.responseText);
+                onError('Erreur client: ' + xhr.status + ' - ' + xhr.responseText);
+            } else if (xhr.status >= 500) {
+                // Erreurs serveur (500+) - retry si possible
+                console.log('Erreur serveur:', xhr.status, xhr.responseText);
                 if (attempt < maxRetries) {
                     attempt++;
+                    console.log('Retry', attempt, 'sur', maxRetries);
                     setTimeout(tryUpload, 1000 * attempt);
                 } else {
-                    onError('Erreur lors de l\'upload: ' + xhr.responseText);
+                    onError('Erreur serveur après ' + maxRetries + ' tentatives: ' + xhr.status);
                 }
+            } else {
+                // Autres codes de statut
+                console.log('Code de statut inattendu:', xhr.status);
+                onError('Code de statut inattendu: ' + xhr.status);
             }
         });
         xhr.addEventListener('error', function() {
+            console.log('Erreur réseau lors de l\'upload');
             if (attempt < maxRetries) {
                 attempt++;
+                console.log('Retry', attempt, 'sur', maxRetries);
                 setTimeout(tryUpload, 1000 * attempt);
             } else {
-                onError('Erreur de connexion lors de l\'upload.');
+                onError('Erreur de connexion après ' + maxRetries + ' tentatives');
+            }
+        });
+        xhr.addEventListener('timeout', function() {
+            console.log('Timeout lors de l\'upload');
+            if (attempt < maxRetries) {
+                attempt++;
+                console.log('Retry', attempt, 'sur', maxRetries);
+                setTimeout(tryUpload, 1000 * attempt);
+            } else {
+                onError('Timeout après ' + maxRetries + ' tentatives');
             }
         });
         xhr.open('POST', window.location.href);
         xhr.setRequestHeader('X-CSRFToken', document.querySelector('[name=csrfmiddlewaretoken]').value);
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.timeout = 300000; // 5 minutes
         uploadStartTime = Date.now();
         xhr.send(formData);
     }
