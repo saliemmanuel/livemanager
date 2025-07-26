@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Inscription - LiveManager{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full space-y-8">
+        <div class="text-center">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Inscription</h2>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">Créez votre compte LiveManager</p>
+        </div>
+        
+        <form class="mt-8 space-y-6" method="post">
+            {% csrf_token %}
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="id_username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nom d'utilisateur</label>
+                    <input id="id_username" name="username" type="text" required 
+                           class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    {% if form.username.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.username.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <label for="id_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                    <input id="id_email" name="email" type="email" required 
+                           class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    {% if form.email.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.email.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <label for="id_password1" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Mot de passe</label>
+                    <input id="id_password1" name="password1" type="password" required 
+                           class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    {% if form.password1.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.password1.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <label for="id_password2" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirmation du mot de passe</label>
+                    <input id="id_password2" name="password2" type="password" required 
+                           class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    {% if form.password2.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.password2.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div>
+                <button type="submit" 
+                        class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
+                    S'inscrire
+                </button>
+            </div>
+            
+            <div class="text-center">
+                <p class="text-gray-600 dark:text-gray-400">
+                    Déjà un compte ? 
+                    <a href="{% url 'login' %}" class="text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300">
+                        Se connecter
+                    </a>
+                </p>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

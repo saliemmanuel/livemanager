@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Accueil - LiveManager{% endblock %}
+
+{% block content %}
+<div class="text-center">
+    <!-- Hero Section -->
+    <div class="mb-16">
+        <h1 class="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
+            📺 LiveManager
+        </h1>
+        <p class="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
+            Plateforme de diffusion en direct pour YouTube Live. 
+            Créez, programmez et gérez vos lives avec facilité.
+        </p>
+        
+        {% if user.is_authenticated %}
+            <div class="space-x-4">
+                <a href="{% url 'dashboard' %}" class="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-lg text-lg font-medium transition duration-200">
+                    Accéder au Dashboard
+                </a>
+                {% if user.is_admin %}
+                    <a href="{% url 'admin_dashboard' %}" class="bg-gray-600 hover:bg-gray-700 text-white px-8 py-3 rounded-lg text-lg font-medium transition duration-200">
+                        Administration
+                    </a>
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="space-x-4">
+                <a href="{% url 'register' %}" class="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-lg text-lg font-medium transition duration-200">
+                    Commencer
+                </a>
+                <a href="{% url 'login' %}" class="bg-gray-600 hover:bg-gray-700 text-white px-8 py-3 rounded-lg text-lg font-medium transition duration-200">
+                    Se connecter
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Features Section -->
+    <div class="grid md:grid-cols-3 gap-8 mb-16">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div class="text-3xl mb-4">🎬</div>
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Diffusion en Direct</h3>
+            <p class="text-gray-600 dark:text-gray-400">
+                Diffusez vos vidéos préenregistrées sur YouTube Live avec FFmpeg.
+            </p>
+        </div>
+        
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div class="text-3xl mb-4">⏰</div>
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Programmation</h3>
+            <p class="text-gray-600 dark:text-gray-400">
+                Programmez vos lives à l'avance pour un démarrage automatique.
+            </p>
+        </div>
+        
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div class="text-3xl mb-4">👥</div>
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Gestion Utilisateurs</h3>
+            <p class="text-gray-600 dark:text-gray-400">
+                Système d'approbation pour contrôler qui peut diffuser.
+            </p>
+        </div>
+    </div>
+
+    <!-- How it works -->
+    <div class="bg-white dark:bg-gray-800 p-8 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Comment ça marche ?</h2>
+        <div class="grid md:grid-cols-4 gap-6 text-left">
+            <div class="text-center">
+                <div class="bg-primary-600 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold mx-auto mb-3">1</div>
+                <h4 class="font-semibold text-gray-900 dark:text-white mb-2">Inscription</h4>
+                <p class="text-gray-600 dark:text-gray-400 text-sm">Créez votre compte et attendez l'approbation admin</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-primary-600 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold mx-auto mb-3">2</div>
+                <h4 class="font-semibold text-gray-900 dark:text-white mb-2">Upload Vidéo</h4>
+                <p class="text-gray-600 dark:text-gray-400 text-sm">Téléversez votre vidéo MP4 et ajoutez votre clé de stream</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-primary-600 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold mx-auto mb-3">3</div>
+                <h4 class="font-semibold text-gray-900 dark:text-white mb-2">Programmation</h4>
+                <p class="text-gray-600 dark:text-gray-400 text-sm">Choisissez entre démarrage manuel ou programmé</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-primary-600 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold mx-auto mb-3">4</div>
+                <h4 class="font-semibold text-gray-900 dark:text-white mb-2">Diffusion</h4>
+                <p class="text-gray-600 dark:text-gray-400 text-sm">FFmpeg diffuse automatiquement sur YouTube Live</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

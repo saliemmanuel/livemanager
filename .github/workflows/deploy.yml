@@ -1,0 +1,120 @@
+name: Deploy to VPS Hostinger
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run tests
+      run: |
+        python manage.py test
+      env:
+        DJANGO_SETTINGS_MODULE: livemanager.settings
+    
+    - name: Check code formatting
+      run: |
+        pip install black flake8
+        black --check .
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to VPS
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        port: ${{ secrets.VPS_PORT }}
+        script: |
+          # Variables
+          PROJECT_DIR="/var/www/livemanager"
+          BACKUP_DIR="/var/backups/livemanager"
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          
+          # Créer les répertoires si ils n'existent pas
+          sudo mkdir -p $PROJECT_DIR
+          sudo mkdir -p $BACKUP_DIR
+          
+          # Sauvegarder l'ancienne version
+          if [ -d "$PROJECT_DIR" ]; then
+            sudo tar -czf "$BACKUP_DIR/backup_$TIMESTAMP.tar.gz" -C $PROJECT_DIR .
+            echo "Backup créé: backup_$TIMESTAMP.tar.gz"
+          fi
+          
+          # Aller dans le répertoire du projet
+          cd $PROJECT_DIR
+          
+          # Arrêter les services si ils tournent
+          sudo systemctl stop livemanager || true
+          sudo systemctl stop livemanager-celery || true
+          
+          # Nettoyer le répertoire
+          sudo rm -rf *
+          
+          # Cloner le nouveau code
+          sudo git clone https://github.com/${{ github.repository }}.git .
+          
+          # Créer l'environnement virtuel
+          sudo python3 -m venv venv
+          sudo chown -R $USER:$USER venv
+          
+          # Activer l'environnement virtuel et installer les dépendances
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          
+          # Configurer les variables d'environnement
+          sudo cp .env.example .env || true
+          
+          # Appliquer les migrations
+          python manage.py migrate
+          
+          # Collecter les fichiers statiques
+          python manage.py collectstatic --noinput
+          
+          # Créer le superuser si il n'existe pas
+          echo "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@livemanager.com', 'admin123') if not User.objects.filter(username='admin').exists() else None" | python manage.py shell
+          
+          # Configurer les permissions
+          sudo chown -R www-data:www-data $PROJECT_DIR
+          sudo chmod -R 755 $PROJECT_DIR
+          
+          # Redémarrer les services
+          sudo systemctl start livemanager
+          sudo systemctl enable livemanager
+          
+          echo "Déploiement terminé avec succès!"
+          
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ ${{ job.status }} == 'success' ]; then
+          echo "✅ Déploiement réussi!"
+        else
+          echo "❌ Déploiement échoué!"
+        fi 
