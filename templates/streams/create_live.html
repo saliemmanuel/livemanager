@@ -1,343 +1,452 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Créer un Live - LiveManager{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto">
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Créer un nouveau Live</h1>
-        <p class="text-gray-600 dark:text-gray-400">Configurez votre diffusion en direct</p>
-    </div>
-
-    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-        <form method="post" enctype="multipart/form-data" class="space-y-6" id="liveForm">
-            {% csrf_token %}
-            
-            <div>
-                <label for="id_title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Titre du Live</label>
-                <input type="text" name="title" id="id_title" required
-                       class="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                       placeholder="Ex: Mon Live Gaming">
-                {% if form.title.errors %}
-                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.title.errors.0 }}</p>
-                {% endif %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Créer un nouveau Live</h1>
+                <p class="mt-2 text-gray-600 dark:text-gray-400">Configurez votre diffusion en direct</p>
             </div>
 
-            <div>
-                <label for="id_video_file" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fichier Vidéo (MP4)</label>
+            <form method="post" enctype="multipart/form-data" id="liveForm" class="space-y-6">
+                {% csrf_token %}
                 
-                <!-- Zone de drop pour les fichiers -->
-                <div id="dropZone" class="relative border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer">
-                    <div id="dropZoneContent">
-                        <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-                        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                            <span class="font-medium text-primary-600 dark:text-primary-400">Cliquez pour sélectionner</span> ou glissez-déposez
-                        </p>
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">MP4 jusqu'à 500MB</p>
-                    </div>
+                <!-- Titre -->
+                <div>
+                    <label for="id_title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Titre du Live</label>
+                    <input type="text" name="title" id="id_title" required
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                           placeholder="Entrez le titre de votre live">
+                    {% if form.title.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.title.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Fichier Vidéo avec Compression -->
+                <div>
+                    <label for="id_video_file" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fichier Vidéo (MP4)</label>
                     
-                    <input type="file" name="video_file" id="id_video_file" accept="video/mp4" required
-                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <!-- Zone de drop pour les fichiers -->
+                    <div id="dropZone" class="relative border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer">
+                        <div id="dropZoneContent">
+                            <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                                <span class="font-medium text-primary-600 dark:text-primary-400">Cliquez pour sélectionner</span> ou glissez-déposez
+                            </p>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">MP4 jusqu'à 500MB - Compression automatique</p>
+                        </div>
+                        
+                        <input type="file" name="video_file" id="id_video_file" accept="video/mp4,video/*" required
+                               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    </div>
+
+                    <!-- Informations de compression -->
+                    <div id="compressionInfo" class="hidden mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div class="flex items-center">
+                            <svg class="h-5 w-5 text-blue-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="text-sm font-medium text-blue-700 dark:text-blue-300">Compression automatique activée</span>
+                        </div>
+                        <p class="text-xs text-blue-600 dark:text-blue-400 mt-1">Votre vidéo sera compressée pour optimiser l'upload</p>
+                    </div>
+
+                    <!-- Barre de progression de compression -->
+                    <div id="compressionProgress" class="hidden mt-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Compression en cours...</span>
+                            <span id="compressionPercentage" class="text-sm text-gray-500 dark:text-gray-400">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div id="compressionBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div class="flex items-center justify-between mt-2">
+                            <span id="compressionStatus" class="text-xs text-gray-500 dark:text-gray-400">Initialisation...</span>
+                            <span id="compressionTime" class="text-xs text-gray-500 dark:text-gray-400">Temps restant: --</span>
+                        </div>
+                    </div>
+
+                    <!-- Barre de progression d'upload -->
+                    <div id="uploadProgress" class="hidden mt-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Upload en cours...</span>
+                            <span id="uploadPercentage" class="text-sm text-gray-500 dark:text-gray-400">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div id="progressBar" class="bg-primary-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div class="flex items-center justify-between mt-2">
+                            <span id="uploadSpeed" class="text-xs text-gray-500 dark:text-gray-400">0 KB/s</span>
+                            <span id="uploadTime" class="text-xs text-gray-500 dark:text-gray-400">Temps restant: --</span>
+                        </div>
+                    </div>
+
+                    <!-- Informations du fichier -->
+                    <div id="fileInfo" class="hidden mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div class="flex items-center">
+                            <svg class="h-5 w-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                            <span id="fileName" class="text-sm font-medium text-gray-700 dark:text-gray-300"></span>
+                        </div>
+                        <p id="fileSize" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
+                        <p id="compressionRatio" class="text-xs text-green-600 dark:text-green-400 mt-1"></p>
+                    </div>
+                    {% if form.video_file.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.video_file.errors.0 }}</p>
+                    {% endif %}
                 </div>
 
-                <!-- Barre de progression -->
-                <div id="uploadProgress" class="hidden mt-4">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Upload en cours...</span>
-                        <span id="uploadPercentage" class="text-sm text-gray-500 dark:text-gray-400">0%</span>
-                    </div>
-                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                        <div id="progressBar" class="bg-primary-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-                    </div>
-                    <div class="flex items-center justify-between mt-2">
-                        <span id="uploadSpeed" class="text-xs text-gray-500 dark:text-gray-400">0 KB/s</span>
-                        <span id="uploadTime" class="text-xs text-gray-500 dark:text-gray-400">Temps restant: --</span>
-                    </div>
+                <!-- Date programmée -->
+                <div>
+                    <label for="id_scheduled_at" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date programmée (optionnel)</label>
+                    <input type="datetime-local" name="scheduled_at" id="id_scheduled_at"
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white">
+                    {% if form.scheduled_at.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.scheduled_at.errors.0 }}</p>
+                    {% endif %}
                 </div>
 
-                <!-- Informations du fichier -->
-                <div id="fileInfo" class="hidden mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div class="flex items-center">
-                        <svg class="h-5 w-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                        </svg>
-                        <span id="fileName" class="text-sm font-medium text-gray-700 dark:text-gray-300"></span>
-                    </div>
-                    <p id="fileSize" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
+                <!-- Bouton de soumission -->
+                <div class="flex justify-end">
+                    <button type="submit" id="submitBtn" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span id="submitText">Créer le Live</span>
+                        <div id="submitLoading" class="hidden">
+                            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Traitement...
+                        </div>
+                    </button>
                 </div>
-
-                {% if form.video_file.errors %}
-                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.video_file.errors.0 }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                <label for="id_stream_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Clé de Diffusion</label>
-                <input type="text" name="stream_key" id="id_stream_key" required
-                       class="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                       placeholder="Votre clé YouTube Live">
-                {% if form.stream_key.errors %}
-                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.stream_key.errors.0 }}</p>
-                {% endif %}
-                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Récupérez votre clé dans les paramètres YouTube Studio</p>
-            </div>
-
-            <div class="flex items-center">
-                <input type="checkbox" name="is_scheduled" id="id_is_scheduled"
-                       class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700">
-                <label for="id_is_scheduled" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                    Programmer ce live
-                </label>
-            </div>
-
-            <div id="scheduled_fields" class="hidden">
-                <label for="id_scheduled_at" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date et Heure de Programmation</label>
-                <input type="datetime-local" name="scheduled_at" id="id_scheduled_at"
-                       class="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                {% if form.scheduled_at.errors %}
-                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.scheduled_at.errors.0 }}</p>
-                {% endif %}
-            </div>
-
-            {% if form.non_field_errors %}
-                <div class="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded">
-                    {% for error in form.non_field_errors %}
-                        {{ error }}
-                    {% endfor %}
-                </div>
-            {% endif %}
-
-            <div class="flex space-x-4">
-                <button type="submit" id="submitBtn"
-                        class="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    <span id="submitText">Créer le Live</span>
-                    <span id="submitLoading" class="hidden">
-                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Upload en cours...
-                    </span>
-                </button>
-                <a href="{% url 'dashboard' %}" 
-                   class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium text-center transition-colors">
-                    Annuler
-                </a>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 
+<!-- FFmpeg.wasm pour la compression côté client -->
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.7/dist/ffmpeg.min.js"></script>
 <script>
-// Variables globales
-let uploadStartTime = 0;
-let uploadInterval = null;
+document.addEventListener('DOMContentLoaded', function() {
+    const liveForm = document.getElementById('liveForm');
+    const fileInput = document.getElementById('id_video_file');
+    const dropZone = document.getElementById('dropZone');
+    const dropZoneContent = document.getElementById('dropZoneContent');
+    const compressionInfo = document.getElementById('compressionInfo');
+    const compressionProgress = document.getElementById('compressionProgress');
+    const compressionBar = document.getElementById('compressionBar');
+    const compressionPercentage = document.getElementById('compressionPercentage');
+    const compressionStatus = document.getElementById('compressionStatus');
+    const compressionTime = document.getElementById('compressionTime');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('progressBar');
+    const uploadPercentage = document.getElementById('uploadPercentage');
+    const uploadSpeed = document.getElementById('uploadSpeed');
+    const uploadTime = document.getElementById('uploadTime');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const compressionRatio = document.getElementById('compressionRatio');
+    const submitBtn = document.getElementById('submitBtn');
+    const submitText = document.getElementById('submitText');
+    const submitLoading = document.getElementById('submitLoading');
 
-// Éléments DOM
-const dropZone = document.getElementById('dropZone');
-const dropZoneContent = document.getElementById('dropZoneContent');
-const fileInput = document.getElementById('id_video_file');
-const uploadProgress = document.getElementById('uploadProgress');
-const progressBar = document.getElementById('progressBar');
-const uploadPercentage = document.getElementById('uploadPercentage');
-const uploadSpeed = document.getElementById('uploadSpeed');
-const uploadTime = document.getElementById('uploadTime');
-const fileInfo = document.getElementById('fileInfo');
-const fileName = document.getElementById('fileName');
-const fileSize = document.getElementById('fileSize');
-const submitBtn = document.getElementById('submitBtn');
-const submitText = document.getElementById('submitText');
-const submitLoading = document.getElementById('submitLoading');
-const liveForm = document.getElementById('liveForm');
+    let originalFile = null;
+    let compressedFile = null;
+    let uploadStartTime = null;
 
-// Gestion du drag & drop
-dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('border-primary-500', 'dark:border-primary-400');
-    dropZone.classList.remove('border-gray-300', 'dark:border-gray-600');
-});
+    // Variables pour le suivi de la compression
+    let compressionStartTime = null;
+    let compressionInterval = null;
 
-dropZone.addEventListener('dragleave', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('border-primary-500', 'dark:border-primary-400');
-    dropZone.classList.add('border-gray-300', 'dark:border-gray-600');
-});
+    // Initialiser FFmpeg
+    let ffmpeg = null;
+    let ffmpegLoaded = false;
 
-dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('border-primary-500', 'dark:border-primary-400');
-    dropZone.classList.add('border-gray-300', 'dark:border-gray-600');
-    
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-        fileInput.files = files;
-        handleFileSelect(files[0]);
-    }
-});
-
-// Gestion de la sélection de fichier
-fileInput.addEventListener('change', (e) => {
-    if (e.target.files.length > 0) {
-        handleFileSelect(e.target.files[0]);
-    }
-});
-
-// Gestion de la sélection de fichier
-function handleFileSelect(file) {
-    // Vérifier le type de fichier
-    if (!file.type.startsWith('video/')) {
-        alert('Veuillez sélectionner un fichier vidéo.');
-        return;
+    async function loadFFmpeg() {
+        try {
+            ffmpeg = createFFmpeg({ 
+                log: true,
+                corePath: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.js'
+            });
+            await ffmpeg.load();
+            ffmpegLoaded = true;
+            console.log('FFmpeg.wasm chargé avec succès');
+        } catch (error) {
+            console.error('Erreur lors du chargement de FFmpeg:', error);
+            ffmpegLoaded = false;
+        }
     }
 
-    // Vérifier la taille (500MB max)
-    const maxSize = 500 * 1024 * 1024; // 500MB
-    if (file.size > maxSize) {
-        alert('Le fichier est trop volumineux. Taille maximum: 500MB');
-        return;
+    // Charger FFmpeg au démarrage
+    loadFFmpeg();
+
+    // Fonction de compression vidéo
+    async function compressVideo(file) {
+        if (!ffmpegLoaded) {
+            console.warn('FFmpeg non disponible, upload sans compression');
+            return file;
+        }
+
+        try {
+            compressionStartTime = Date.now();
+            compressionProgress.classList.remove('hidden');
+            compressionStatus.textContent = 'Chargement de FFmpeg...';
+
+            // Écrire le fichier dans FFmpeg
+            const inputName = 'input.mp4';
+            const outputName = 'output.mp4';
+            
+            ffmpeg.FS('writeFile', inputName, await file.arrayBuffer());
+            
+            compressionStatus.textContent = 'Compression en cours...';
+            
+            // Commande de compression FFmpeg
+            await ffmpeg.run(
+                '-i', inputName,
+                '-c:v', 'libx264',      // Codec vidéo H.264
+                '-c:a', 'aac',          // Codec audio AAC
+                '-preset', 'medium',     // Équilibre qualité/performance
+                '-crf', '28',           // Qualité constante (plus élevé = plus compressé)
+                '-movflags', '+faststart', // Optimisation web
+                '-y',                   // Écraser si existe
+                outputName
+            );
+
+            // Lire le fichier compressé
+            const compressedData = ffmpeg.FS('readFile', outputName);
+            
+            // Créer un nouveau fichier
+            const compressedBlob = new Blob([compressedData.buffer], { type: 'video/mp4' });
+            const compressedFile = new File([compressedBlob], file.name, { type: 'video/mp4' });
+
+            // Nettoyer les fichiers temporaires
+            ffmpeg.FS('unlink', inputName);
+            ffmpeg.FS('unlink', outputName);
+
+            // Calculer le ratio de compression
+            const originalSize = file.size;
+            const compressedSize = compressedFile.size;
+            const ratio = ((originalSize - compressedSize) / originalSize * 100).toFixed(1);
+
+            // Afficher les informations
+            compressionRatio.textContent = `Compression: ${ratio}% de réduction (${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)})`;
+            
+            return compressedFile;
+
+        } catch (error) {
+            console.error('Erreur lors de la compression:', error);
+            compressionStatus.textContent = 'Erreur de compression, upload du fichier original';
+            return file;
+        } finally {
+            compressionProgress.classList.add('hidden');
+        }
     }
 
-    // Afficher les informations du fichier
-    fileName.textContent = file.name;
-    fileSize.textContent = formatFileSize(file.size);
-    fileInfo.classList.remove('hidden');
-
-    // Mettre à jour la zone de drop
-    dropZoneContent.innerHTML = `
-        <svg class="mx-auto h-12 w-12 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-        </svg>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            <span class="font-medium text-green-600 dark:text-green-400">Fichier sélectionné</span>
-        </p>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">${file.name}</p>
-    `;
-}
-
-// Formatage de la taille de fichier
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-// Gestion de la soumission du formulaire
-liveForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    const file = fileInput.files[0];
-    
-    if (!file) {
-        alert('Veuillez sélectionner un fichier vidéo.');
-        return;
+    // Fonction pour formater la taille des fichiers
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    // Afficher la barre de progression
-    uploadProgress.classList.remove('hidden');
-    submitBtn.disabled = true;
-    submitText.classList.add('hidden');
-    submitLoading.classList.remove('hidden');
+    // Fonction pour démarrer le suivi de la compression
+    function startCompressionTracking() {
+        compressionInterval = setInterval(() => {
+            if (compressionStartTime) {
+                const elapsed = Date.now() - compressionStartTime;
+                const minutes = Math.floor(elapsed / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                compressionTime.textContent = `Temps écoulé: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }, 1000);
+    }
 
-    // Démarrer le suivi de l'upload
-    uploadStartTime = Date.now();
-    startProgressTracking();
+    // Fonction pour arrêter le suivi de la compression
+    function stopCompressionTracking() {
+        if (compressionInterval) {
+            clearInterval(compressionInterval);
+            compressionInterval = null;
+        }
+    }
 
-    // Envoyer le formulaire avec XMLHttpRequest pour suivre la progression
-    const xhr = new XMLHttpRequest();
-    
-    xhr.upload.addEventListener('progress', function(e) {
-        if (e.lengthComputable) {
-            const percentComplete = (e.loaded / e.total) * 100;
-            updateProgress(percentComplete, e.loaded, e.total);
+    // Fonction pour démarrer le suivi de l'upload
+    function startProgressTracking() {
+        uploadInterval = setInterval(() => {
+            if (uploadStartTime) {
+                const elapsed = Date.now() - uploadStartTime;
+                const minutes = Math.floor(elapsed / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                uploadTime.textContent = `Temps écoulé: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }, 1000);
+    }
+
+    // Fonction pour arrêter le suivi de l'upload
+    function stopProgressTracking() {
+        if (uploadInterval) {
+            clearInterval(uploadInterval);
+            uploadInterval = null;
+        }
+    }
+
+    // Fonction pour réinitialiser le formulaire
+    function resetForm() {
+        uploadProgress.classList.add('hidden');
+        compressionProgress.classList.add('hidden');
+        fileInfo.classList.add('hidden');
+        submitBtn.disabled = false;
+        submitText.classList.remove('hidden');
+        submitLoading.classList.add('hidden');
+        stopProgressTracking();
+        stopCompressionTracking();
+    }
+
+    // Gestion du drag and drop
+    dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropZone.classList.add('border-primary-500', 'dark:border-primary-400');
+    });
+
+    dropZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        dropZone.classList.remove('border-primary-500', 'dark:border-primary-400');
+    });
+
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropZone.classList.remove('border-primary-500', 'dark:border-primary-400');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            handleFileSelect(files[0]);
         }
     });
 
-    xhr.addEventListener('load', function() {
-        if (xhr.status === 200) {
-            // Succès - rediriger vers le dashboard
-            window.location.href = '{% url "dashboard" %}';
-        } else {
-            // Erreur
-            alert('Erreur lors de l\'upload: ' + xhr.responseText);
+    // Gestion de la sélection de fichier
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            handleFileSelect(e.target.files[0]);
+        }
+    });
+
+    function handleFileSelect(file) {
+        originalFile = file;
+        
+        // Vérifications
+        if (!file.type.startsWith('video/')) {
+            alert('Veuillez sélectionner un fichier vidéo.');
+            return;
+        }
+
+        const maxSize = 500 * 1024 * 1024; // 500MB
+        if (file.size > maxSize) {
+            alert('Le fichier est trop volumineux. Taille maximum: 500MB');
+            return;
+        }
+
+        // Afficher les informations du fichier original
+        fileName.textContent = file.name;
+        fileSize.textContent = `Taille originale: ${formatFileSize(file.size)}`;
+        fileInfo.classList.remove('hidden');
+        compressionInfo.classList.remove('hidden');
+
+        // Démarrer la compression
+        startCompressionTracking();
+        compressVideo(file).then(compressed => {
+            compressedFile = compressed;
+            stopCompressionTracking();
+            
+            // Mettre à jour les informations
+            if (compressed !== file) {
+                fileSize.textContent = `Taille originale: ${formatFileSize(file.size)}`;
+            }
+        });
+    }
+
+    // Gestion de la soumission du formulaire
+    liveForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const fileToUpload = compressedFile || originalFile;
+        
+        if (!fileToUpload) {
+            alert('Veuillez sélectionner un fichier vidéo.');
+            return;
+        }
+
+        // Créer un nouveau FormData avec le fichier compressé
+        const formData = new FormData();
+        formData.append('title', document.getElementById('id_title').value);
+        formData.append('video_file', fileToUpload);
+        
+        const scheduledAt = document.getElementById('id_scheduled_at').value;
+        if (scheduledAt) {
+            formData.append('scheduled_at', scheduledAt);
+        }
+
+        // Afficher la barre de progression
+        uploadProgress.classList.remove('hidden');
+        submitBtn.disabled = true;
+        submitText.classList.add('hidden');
+        submitLoading.classList.remove('hidden');
+
+        // Démarrer le suivi de l'upload
+        uploadStartTime = Date.now();
+        startProgressTracking();
+
+        // Envoyer le formulaire avec XMLHttpRequest pour suivre la progression
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                progressBar.style.width = percentComplete + '%';
+                uploadPercentage.textContent = Math.round(percentComplete) + '%';
+                
+                // Calculer la vitesse
+                const elapsed = Date.now() - uploadStartTime;
+                if (elapsed > 0) {
+                    const speed = e.loaded / elapsed * 1000; // bytes per second
+                    uploadSpeed.textContent = formatFileSize(speed) + '/s';
+                }
+            }
+        });
+
+        xhr.addEventListener('load', function() {
+            stopProgressTracking();
+            if (xhr.status === 200) {
+                // Succès - rediriger vers le dashboard
+                window.location.href = '{% url "dashboard" %}';
+            } else {
+                // Erreur
+                alert('Erreur lors de l\'upload: ' + xhr.responseText);
+                resetForm();
+            }
+        });
+
+        xhr.addEventListener('error', function() {
+            stopProgressTracking();
+            alert('Erreur de connexion lors de l\'upload.');
             resetForm();
-        }
+        });
+
+        xhr.open('POST', window.location.href);
+        xhr.setRequestHeader('X-CSRFToken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.send(formData);
     });
-
-    xhr.addEventListener('error', function() {
-        alert('Erreur de connexion lors de l\'upload.');
-        resetForm();
-    });
-
-    xhr.open('POST', window.location.href);
-    xhr.setRequestHeader('X-CSRFToken', document.querySelector('[name=csrfmiddlewaretoken]').value);
-    xhr.send(formData);
-});
-
-// Mise à jour de la barre de progression
-function updateProgress(percent, loaded, total) {
-    progressBar.style.width = percent + '%';
-    uploadPercentage.textContent = Math.round(percent) + '%';
-    
-    // Calculer la vitesse
-    const elapsed = (Date.now() - uploadStartTime) / 1000;
-    const speed = loaded / elapsed;
-    uploadSpeed.textContent = formatFileSize(speed) + '/s';
-    
-    // Calculer le temps restant
-    if (percent > 0) {
-        const remaining = (total - loaded) / speed;
-        uploadTime.textContent = 'Temps restant: ' + formatTime(remaining);
-    }
-}
-
-// Démarrage du suivi de progression
-function startProgressTracking() {
-    uploadInterval = setInterval(() => {
-        // Mise à jour en temps réel
-    }, 100);
-}
-
-// Formatage du temps
-function formatTime(seconds) {
-    if (seconds < 60) {
-        return Math.round(seconds) + 's';
-    } else if (seconds < 3600) {
-        return Math.round(seconds / 60) + 'm';
-    } else {
-        return Math.round(seconds / 3600) + 'h';
-    }
-}
-
-// Réinitialisation du formulaire
-function resetForm() {
-    uploadProgress.classList.add('hidden');
-    submitBtn.disabled = false;
-    submitText.classList.remove('hidden');
-    submitLoading.classList.add('hidden');
-    progressBar.style.width = '0%';
-    uploadPercentage.textContent = '0%';
-    
-    if (uploadInterval) {
-        clearInterval(uploadInterval);
-        uploadInterval = null;
-    }
-}
-
-// Gestion de la programmation
-document.getElementById('id_is_scheduled').addEventListener('change', function() {
-    const scheduledFields = document.getElementById('scheduled_fields');
-    if (this.checked) {
-        scheduledFields.classList.remove('hidden');
-        document.getElementById('id_scheduled_at').required = true;
-    } else {
-        scheduledFields.classList.add('hidden');
-        document.getElementById('id_scheduled_at').required = false;
-    }
 });
 </script>
 {% endblock %} 

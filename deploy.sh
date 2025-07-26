@@ -92,8 +92,12 @@ apt install -y python3 python3-pip python3-venv nginx postgresql postgresql-cont
 curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
 apt install -y nodejs
 
-# Installation de FFmpeg
-apt install -y ffmpeg
+# Installation de FFmpeg avec tous les codecs pour la compression vidéo
+log "🎬 Installation de FFmpeg pour la compression vidéo..."
+apt install -y software-properties-common
+add-apt-repository ppa:jonathonf/ffmpeg-4 -y
+apt update -qq
+apt install -y ffmpeg libavcodec-extra libavformat-dev libavutil-dev libswscale-dev libavfilter-dev libx264-dev libx265-dev libfdk-aac-dev libmp3lame-dev libopus-dev libvpx-dev libwebp-dev libass-dev libfreetype6-dev libfontconfig1-dev libfribidi-dev libharfbuzz-dev libtheora-dev libvorbis-dev libxvidcore-dev libnuma-dev libvdpau-dev libva-dev libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev pkg-config yasm cmake build-essential
 
 # Installation de Certbot pour SSL
 apt install -y certbot python3-certbot-nginx
