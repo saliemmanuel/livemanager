@@ -269,6 +269,10 @@ if [ ! -f ".env" ]; then
     sed -i "s/REDIS_URL=.*/REDIS_URL=redis:\/\/localhost:6379\/0/" .env
     sed -i "s/CSRF_TRUSTED_ORIGINS=.*/CSRF_TRUSTED_ORIGINS=https:\/\/$DOMAIN/" .env
     
+    # Optimisations pour upload de gros fichiers
+    echo "DATA_UPLOAD_MAX_MEMORY_SIZE=1073741824" >> .env
+    echo "FILE_UPLOAD_MAX_MEMORY_SIZE=1073741824" >> .env
+    
     log "🔑 Clé secrète générée et configuration mise à jour"
 fi
 
@@ -372,6 +376,11 @@ server {
     add_header X-XSS-Protection "1; mode=block";
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     
+    # Optimisations pour upload de gros fichiers
+    client_max_body_size 2G;
+    client_body_timeout 600s;
+    client_header_timeout 600s;
+    
     # Fichiers statiques
     location /static/ {
         alias $PROJECT_DIR/staticfiles/;
@@ -394,6 +403,13 @@ server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_redirect off;
+        
+        # Timeouts pour upload de gros fichiers
+        proxy_connect_timeout 600s;
+        proxy_send_timeout 600s;
+        proxy_read_timeout 600s;
+        proxy_buffering off;
+        proxy_request_buffering off;
     }
 }
 EOF

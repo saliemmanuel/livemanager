@@ -104,6 +104,7 @@ fi
 # ============================================================================
 step "Étape 3/6: Vérification de la configuration"
 
+# Vérifier le fichier .env
 log "⚙️ Vérification du fichier .env..."
 if [ ! -f ".env" ]; then
     log "📄 Création du fichier .env..."
@@ -114,6 +115,11 @@ if [ ! -f ".env" ]; then
         sed -i "s/SECRET_KEY=.*/SECRET_KEY=$SECRET_KEY/" .env
         sed -i "s/DEBUG=.*/DEBUG=False/" .env
         sed -i "s/ALLOWED_HOSTS=.*/ALLOWED_HOSTS=*,localhost,127.0.0.1/" .env
+        
+        # Optimisations pour upload de gros fichiers
+        echo "DATA_UPLOAD_MAX_MEMORY_SIZE=1073741824" >> .env
+        echo "FILE_UPLOAD_MAX_MEMORY_SIZE=1073741824" >> .env
+        
         success "Fichier .env créé"
     else
         error "Fichier .env.example manquant"
@@ -230,11 +236,17 @@ else
     success "Nginx démarré"
 fi
 
-log "⚙️ Recréation de la configuration Nginx..."
+# Configurer Nginx
+log "🌐 Configuration de Nginx..."
 cat > /etc/nginx/sites-available/livemanager << EOF
 server {
     listen 80;
     server_name _;
+    
+    # Optimisations pour upload de gros fichiers
+    client_max_body_size 2G;
+    client_body_timeout 600s;
+    client_header_timeout 600s;
     
     # Fichiers statiques
     location /static/ {
@@ -259,10 +271,12 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_redirect off;
         
-        # Timeouts pour éviter les erreurs 502
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
+        # Timeouts pour upload de gros fichiers
+        proxy_connect_timeout 600s;
+        proxy_send_timeout 600s;
+        proxy_read_timeout 600s;
+        proxy_buffering off;
+        proxy_request_buffering off;
     }
 }
 EOF
