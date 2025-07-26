@@ -39,11 +39,35 @@
                             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
                                 <span class="font-medium text-primary-600 dark:text-primary-400">Cliquez pour sélectionner</span> ou glissez-déposez
                             </p>
-                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">MP4 jusqu'à 500MB - Compression automatique</p>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">MP4 jusqu'à 1GB - Upload rapide via SCP disponible</p>
                         </div>
                         
                         <input type="file" name="video_file" id="id_video_file" accept="video/mp4,video/*" required
                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    </div>
+
+                    <!-- Options d'upload -->
+                    <div class="mt-4 flex space-x-4">
+                        <button type="button" id="uploadViaWebBtn" class="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors">
+                            📤 Upload via navigateur
+                        </button>
+                        <button type="button" id="uploadViaScpBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
+                            🚀 Upload rapide via SCP
+                        </button>
+                    </div>
+
+                    <!-- Instructions SCP -->
+                    <div id="scpInstructions" class="hidden mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <h4 class="font-medium text-blue-900 dark:text-blue-100 mb-2">📁 Upload via SCP</h4>
+                        <div id="scpContent" class="text-sm text-blue-800 dark:text-blue-200"></div>
+                        <div class="mt-3 flex space-x-2">
+                            <button type="button" id="copyScpBtn" class="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">
+                                📋 Copier la commande
+                            </button>
+                            <button type="button" id="checkFileBtn" class="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700">
+                                ✅ Vérifier le fichier
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Informations de compression -->
@@ -162,6 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let originalFile = null;
     let compressedFile = null;
     let uploadStartTime = null;
+    let uploadMode = 'web'; // 'web' ou 'scp'
 
     // Variables pour le suivi de la compression
     let compressionStartTime = null;
@@ -170,6 +195,107 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialiser FFmpeg
     let ffmpeg = null;
     let ffmpegLoaded = false;
+
+    // Gestion des modes d'upload
+    document.getElementById('uploadViaWebBtn').addEventListener('click', function() {
+        uploadMode = 'web';
+        document.getElementById('uploadViaWebBtn').classList.add('bg-primary-700');
+        document.getElementById('uploadViaScpBtn').classList.remove('bg-green-700');
+        document.getElementById('uploadViaScpBtn').classList.add('bg-green-600');
+        document.getElementById('scpInstructions').classList.add('hidden');
+    });
+
+    document.getElementById('uploadViaScpBtn').addEventListener('click', function() {
+        uploadMode = 'scp';
+        document.getElementById('uploadViaScpBtn').classList.add('bg-green-700');
+        document.getElementById('uploadViaWebBtn').classList.remove('bg-primary-700');
+        document.getElementById('uploadViaWebBtn').classList.add('bg-primary-600');
+        
+        if (originalFile) {
+            generateScpInstructions(originalFile);
+        } else {
+            alert('Veuillez d\'abord sélectionner un fichier vidéo.');
+        }
+    });
+
+    // Générer les instructions SCP
+    async function generateScpInstructions(file) {
+        const formData = new FormData();
+        formData.append('file_name', file.name);
+        
+        try {
+            const response = await fetch('/upload-via-scp/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('scpContent').innerHTML = data.instructions.replace(/\n/g, '<br>');
+                document.getElementById('scpInstructions').classList.remove('hidden');
+                
+                // Stocker la commande SCP pour la copie
+                window.scpCommand = data.scp_command;
+            } else {
+                alert('Erreur lors de la génération des instructions SCP: ' + data.message);
+            }
+        } catch (error) {
+            alert('Erreur de connexion: ' + error);
+        }
+    }
+
+    // Copier la commande SCP
+    document.getElementById('copyScpBtn').addEventListener('click', function() {
+        if (window.scpCommand) {
+            navigator.clipboard.writeText(window.scpCommand).then(function() {
+                alert('Commande SCP copiée dans le presse-papiers !');
+            }).catch(function() {
+                // Fallback pour les navigateurs qui ne supportent pas clipboard API
+                const textArea = document.createElement('textarea');
+                textArea.value = window.scpCommand;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('Commande SCP copiée dans le presse-papiers !');
+            });
+        }
+    });
+
+    // Vérifier la présence du fichier
+    document.getElementById('checkFileBtn').addEventListener('click', async function() {
+        if (!originalFile) {
+            alert('Aucun fichier sélectionné.');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file_name', originalFile.name);
+        
+        try {
+            const response = await fetch('/check-file-exists/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            });
+            
+            const data = await response.json();
+            if (data.success && data.exists) {
+                alert(`✅ Fichier trouvé ! Taille: ${formatFileSize(data.file_size)}`);
+                // Le fichier est prêt, on peut continuer
+                document.getElementById('scpInstructions').classList.add('hidden');
+            } else {
+                alert('❌ Fichier non trouvé. Vérifiez que l\'upload SCP s\'est bien terminé.');
+            }
+        } catch (error) {
+            alert('Erreur de connexion: ' + error);
+        }
+    });
 
     async function loadFFmpeg() {
         try {
@@ -434,25 +560,100 @@ function uploadFileWithRetry(file, onProgress, onDone, onError, maxRetries = 3) 
 // Remplacer la soumission du formulaire
 liveForm.addEventListener('submit', function(e) {
     e.preventDefault();
-    const fileToUpload = compressedFile || originalFile;
-    if (!fileToUpload) {
-        alert('Veuillez sélectionner un fichier vidéo.');
-        return;
+    
+    if (uploadMode === 'scp') {
+        // Mode SCP : vérifier que le fichier existe avant de créer le live
+        if (!originalFile) {
+            alert('Veuillez sélectionner un fichier vidéo.');
+            return;
+        }
+        
+        // Vérifier la présence du fichier
+        const formData = new FormData();
+        formData.append('file_name', originalFile.name);
+        
+        fetch('/check-file-exists/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.exists) {
+                // Le fichier existe, créer le live
+                createLiveWithScpFile(originalFile.name);
+            } else {
+                alert('❌ Fichier non trouvé. Vérifiez que l\'upload SCP s\'est bien terminé.');
+            }
+        })
+        .catch(error => {
+            alert('Erreur de vérification: ' + error);
+        });
+    } else {
+        // Mode web : upload AJAX classique
+        const fileToUpload = compressedFile || originalFile;
+        if (!fileToUpload) {
+            alert('Veuillez sélectionner un fichier vidéo.');
+            return;
+        }
+        uploadProgress.classList.remove('hidden');
+        submitBtn.disabled = true;
+        submitText.classList.add('hidden');
+        submitLoading.classList.remove('hidden');
+        uploadFileWithRetry(
+            fileToUpload,
+            function () {},
+            function () {},
+            function (err) {
+                alert(err);
+                resetForm();
+            }
+        );
     }
+});
+
+// Créer un live avec un fichier uploadé via SCP
+function createLiveWithScpFile(fileName) {
+    const formData = new FormData();
+    formData.append('title', document.getElementById('id_title').value);
+    formData.append('video_file_name', fileName); // Nom du fichier SCP
+    formData.append('upload_method', 'scp');
+    
+    const scheduledAt = document.getElementById('id_scheduled_at')?.value;
+    if (scheduledAt) {
+        formData.append('scheduled_at', scheduledAt);
+    }
+    
+    // Afficher la progression
     uploadProgress.classList.remove('hidden');
     submitBtn.disabled = true;
     submitText.classList.add('hidden');
     submitLoading.classList.remove('hidden');
-    uploadFileWithRetry(
-        fileToUpload,
-        function () {},
-        function () {},
-        function (err) {
-            alert(err);
+    
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '{% url "dashboard" %}';
+        } else {
+            alert('Erreur lors de la création du live: ' + data.message);
             resetForm();
         }
-    );
-});
+    })
+    .catch(error => {
+        alert('Erreur de connexion: ' + error);
+        resetForm();
+    });
+}
 });
 </script>
 {% endblock %} 

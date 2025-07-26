@@ -77,100 +77,129 @@ def create_live(request):
                 live = form.save(commit=False)
                 live.user = request.user
 
-                # Traitement de la vidéo uploadée
-                if "video_file" in request.FILES:
-                    video_file = request.FILES["video_file"]
-
-                    # Créer un fichier temporaire pour la vidéo compressée
-                    with tempfile.NamedTemporaryFile(
-                        delete=False, suffix=".mp4"
-                    ) as temp_file:
-                        # Sauvegarder le fichier uploadé
-                        for chunk in video_file.chunks():
-                            temp_file.write(chunk)
-                        temp_file_path = temp_file.name
-
-                    try:
-                        # Décompresser la vidéo avec FFmpeg
-                        output_path = os.path.join(
-                            "media", "videos", f"decompressed_{video_file.name}"
-                        )
-                        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-                        # Commande FFmpeg pour décompresser et optimiser
-                        ffmpeg_cmd = [
-                            "ffmpeg",
-                            "-i",
-                            temp_file_path,
-                            "-c:v",
-                            "libx264",  # Codec vidéo H.264
-                            "-c:a",
-                            "aac",  # Codec audio AAC
-                            "-preset",
-                            "medium",  # Équilibre qualité/performance
-                            "-crf",
-                            "23",  # Qualité constante (18-28 recommandé)
-                            "-movflags",
-                            "+faststart",  # Optimisation web
-                            "-y",  # Écraser si existe
-                            output_path,
-                        ]
-
-                        # Exécuter FFmpeg
-                        result = subprocess.run(
-                            ffmpeg_cmd,
-                            capture_output=True,
-                            text=True,
-                            timeout=300,  # 5 minutes max
-                        )
-
-                        if result.returncode == 0:
-                            # Sauvegarder le chemin de la vidéo décompressée
-                            live.video_file = f"videos/decompressed_{video_file.name}"
-                            live.save()
-
-                            # Réponse JSON pour les uploads AJAX
-                            if (
-                                request.headers.get("X-Requested-With")
-                                == "XMLHttpRequest"
-                            ):
-                                return JsonResponse(
-                                    {
-                                        "success": True,
-                                        "message": (
-                                            "Vidéo compressée et live créé "
-                                            "avec succès !"
-                                        ),
-                                        "redirect_url": reverse("dashboard"),
-                                    }
-                                )
-
-                            messages.success(
-                                request, "Vidéo compressée et live créé avec succès !"
-                            )
-                            return redirect("dashboard")
-                        else:
-                            raise Exception(f"Erreur FFmpeg: {result.stderr}")
-
-                    finally:
-                        # Nettoyer le fichier temporaire
-                        if os.path.exists(temp_file_path):
-                            os.unlink(temp_file_path)
-                else:
-                    # Pas de fichier vidéo, sauvegarder normalement
+                # Vérifier la méthode d'upload
+                upload_method = request.POST.get('upload_method')
+                
+                if upload_method == 'scp':
+                    # Fichier uploadé via SCP
+                    video_file_name = request.POST.get('video_file_name')
+                    if not video_file_name:
+                        raise Exception("Nom de fichier manquant")
+                    
+                    # Vérifier que le fichier existe
+                    scp_file_path = os.path.join("media", "videos", video_file_name)
+                    if not os.path.exists(scp_file_path):
+                        raise Exception(f"Fichier {video_file_name} non trouvé. Vérifiez que l'upload SCP s'est bien terminé.")
+                    
+                    # Utiliser le fichier SCP
+                    live.video_file = f"videos/{video_file_name}"
                     live.save()
-
+                    
                     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                        return JsonResponse(
-                            {
-                                "success": True,
-                                "message": "Live créé avec succès !",
-                                "redirect_url": reverse("dashboard"),
-                            }
-                        )
-
+                        return JsonResponse({
+                            "success": True,
+                            "message": "Live créé avec succès !",
+                            "redirect_url": reverse("dashboard"),
+                        })
+                    
                     messages.success(request, "Live créé avec succès !")
                     return redirect("dashboard")
+                    
+                else:
+                    # Upload normal via navigateur
+                    if "video_file" in request.FILES:
+                        video_file = request.FILES["video_file"]
+
+                        # Créer un fichier temporaire pour la vidéo compressée
+                        with tempfile.NamedTemporaryFile(
+                            delete=False, suffix=".mp4"
+                        ) as temp_file:
+                            # Sauvegarder le fichier uploadé
+                            for chunk in video_file.chunks():
+                                temp_file.write(chunk)
+                            temp_file_path = temp_file.name
+
+                        try:
+                            # Décompresser la vidéo avec FFmpeg
+                            output_path = os.path.join(
+                                "media", "videos", f"decompressed_{video_file.name}"
+                            )
+                            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+                            # Commande FFmpeg pour décompresser et optimiser
+                            ffmpeg_cmd = [
+                                "ffmpeg",
+                                "-i",
+                                temp_file_path,
+                                "-c:v",
+                                "libx264",  # Codec vidéo H.264
+                                "-c:a",
+                                "aac",  # Codec audio AAC
+                                "-preset",
+                                "medium",  # Équilibre qualité/performance
+                                "-crf",
+                                "23",  # Qualité constante (18-28 recommandé)
+                                "-movflags",
+                                "+faststart",  # Optimisation web
+                                "-y",  # Écraser si existe
+                                output_path,
+                            ]
+
+                            # Exécuter FFmpeg
+                            result = subprocess.run(
+                                ffmpeg_cmd,
+                                capture_output=True,
+                                text=True,
+                                timeout=300,  # 5 minutes max
+                            )
+
+                            if result.returncode == 0:
+                                # Sauvegarder le chemin de la vidéo décompressée
+                                live.video_file = f"videos/decompressed_{video_file.name}"
+                                live.save()
+
+                                # Réponse JSON pour les uploads AJAX
+                                if (
+                                    request.headers.get("X-Requested-With")
+                                    == "XMLHttpRequest"
+                                ):
+                                    return JsonResponse(
+                                        {
+                                            "success": True,
+                                            "message": (
+                                                "Vidéo compressée et live créé "
+                                                "avec succès !"
+                                            ),
+                                            "redirect_url": reverse("dashboard"),
+                                        }
+                                    )
+
+                                messages.success(
+                                    request, "Vidéo compressée et live créé avec succès !"
+                                )
+                                return redirect("dashboard")
+                            else:
+                                raise Exception(f"Erreur FFmpeg: {result.stderr}")
+
+                        finally:
+                            # Nettoyer le fichier temporaire
+                            if os.path.exists(temp_file_path):
+                                os.unlink(temp_file_path)
+                    else:
+                        # Pas de fichier vidéo, sauvegarder normalement
+                        live.save()
+
+                        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                            return JsonResponse(
+                                {
+                                    "success": True,
+                                    "message": "Live créé avec succès !",
+                                    "redirect_url": reverse("dashboard"),
+                                }
+                            )
+
+                        messages.success(request, "Live créé avec succès !")
+                        return redirect("dashboard")
 
             except Exception as e:
                 if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -409,3 +438,80 @@ def upload_chunk_status(request):
         int(f.split("_")[1]) for f in os.listdir(temp_dir) if f.startswith("chunk_")
     ]
     return JsonResponse({"success": True, "chunks": sorted(chunks)})
+
+
+@csrf_exempt
+@login_required
+def upload_via_scp(request):
+    """Génère les instructions SCP pour uploader un fichier vidéo."""
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Méthode non autorisée"}, status=405)
+    
+    file_name = request.POST.get("file_name")
+    if not file_name:
+        return JsonResponse({"success": False, "message": "Nom de fichier manquant"}, status=400)
+    
+    # Obtenir l'IP du serveur
+    server_ip = request.META.get('SERVER_NAME', 'localhost')
+    if server_ip == 'localhost':
+        # Si on est en local, utiliser l'IP du serveur
+        import socket
+        server_ip = socket.gethostbyname(socket.gethostname())
+    
+    # Générer la commande SCP
+    scp_command = f'scp "{file_name}" root@{server_ip}:/var/www/livemanager/media/videos/'
+    
+    # Instructions détaillées
+    instructions = f"""
+📁 Instructions d'upload via SCP :
+
+1. Ouvrez un terminal sur votre ordinateur
+2. Naviguez vers le dossier contenant votre fichier
+3. Exécutez cette commande :
+
+{scp_command}
+
+4. Entrez le mot de passe du serveur si demandé
+5. Revenez sur cette page et cliquez sur "Vérifier le fichier"
+
+💡 Avantages :
+• Upload ultra-rapide (pas de limite HTTP)
+• Reprise automatique en cas de coupure
+• Plus stable pour les gros fichiers
+"""
+    
+    return JsonResponse({
+        "success": True,
+        "scp_command": scp_command,
+        "instructions": instructions,
+        "file_name": file_name
+    })
+
+
+@csrf_exempt
+@login_required
+def check_file_exists(request):
+    """Vérifie si un fichier existe sur le serveur après upload SCP."""
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Méthode non autorisée"}, status=405)
+    
+    file_name = request.POST.get("file_name")
+    if not file_name:
+        return JsonResponse({"success": False, "message": "Nom de fichier manquant"}, status=400)
+    
+    # Vérifier si le fichier existe
+    file_path = os.path.join("media", "videos", file_name)
+    if os.path.exists(file_path):
+        file_size = os.path.getsize(file_path)
+        return JsonResponse({
+            "success": True,
+            "exists": True,
+            "file_size": file_size,
+            "file_path": file_path
+        })
+    else:
+        return JsonResponse({
+            "success": True,
+            "exists": False,
+            "message": "Fichier non trouvé. Vérifiez que l'upload SCP s'est bien terminé."
+        })
