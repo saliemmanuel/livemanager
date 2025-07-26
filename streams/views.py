@@ -393,13 +393,19 @@ def upload_chunk(request):
 def upload_chunk_status(request):
     """Retourne la liste des chunks déjà reçus pour un fichier donné."""
     if request.method != "POST":
-        return JsonResponse({"success": False, "message": "Méthode non autorisée"}, status=405)
+        return JsonResponse(
+            {"success": False, "message": "Méthode non autorisée"}, status=405
+        )
     user = request.user
     file_id = request.POST.get("file_id")
     if not file_id:
-        return JsonResponse({"success": False, "message": "file_id manquant"}, status=400)
+        return JsonResponse(
+            {"success": False, "message": "file_id manquant"}, status=400
+        )
     temp_dir = os.path.join("media", "temp_chunks", str(user.id), file_id)
     if not os.path.exists(temp_dir):
         return JsonResponse({"success": True, "chunks": []})
-    chunks = [int(f.split('_')[1]) for f in os.listdir(temp_dir) if f.startswith("chunk_")]
+    chunks = [
+        int(f.split("_")[1]) for f in os.listdir(temp_dir) if f.startswith("chunk_")
+    ]
     return JsonResponse({"success": True, "chunks": sorted(chunks)})

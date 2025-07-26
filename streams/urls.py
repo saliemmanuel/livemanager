@@ -26,5 +26,5 @@ urlpatterns = [
     path("toggle-admin/<int:user_id>/", views.toggle_admin, name="toggle_admin"),
     path("delete-user/<int:user_id>/", views.delete_user, name="delete_user"),
     path("upload-chunk/", views.upload_chunk, name="upload_chunk"),
-    path('upload-chunk-status/', views.upload_chunk_status, name='upload_chunk_status'),
+    path("upload-chunk-status/", views.upload_chunk_status, name="upload_chunk_status"),
 ]
