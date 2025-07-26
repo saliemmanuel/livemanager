@@ -348,11 +348,64 @@ def start_live(request, live_id):
     if not live.can_start:
         return JsonResponse({"success": False, "message": "Live non démarré"})
 
-    # Pour l'instant, on simule le démarrage
-    live.status = "running"
-    live.save()
+    if not live.stream_key:
+        return JsonResponse({"success": False, "message": "Clé de streaming manquante"})
 
-    return JsonResponse({"success": True, "message": "Live démarré avec succès"})
+    try:
+        # Construire la commande FFmpeg
+        video_path = os.path.join("media", live.video_file.name)
+        if not os.path.exists(video_path):
+            return JsonResponse({"success": False, "message": "Fichier vidéo non trouvé"})
+
+        # Construire l'URL RTMP avec la clé de streaming
+        rtmp_url = live.stream_key.key
+        
+        # Commande FFmpeg pour le streaming
+        ffmpeg_cmd = [
+            "ffmpeg",
+            "-re",  # Lire à la vitesse réelle
+            "-i", video_path,  # Fichier d'entrée
+            "-c:v", "libx264",  # Codec vidéo H.264
+            "-preset", "ultrafast",  # Preset rapide pour streaming
+            "-tune", "zerolatency",  # Optimisation latence
+            "-c:a", "aac",  # Codec audio AAC
+            "-b:a", "128k",  # Bitrate audio
+            "-f", "flv",  # Format de sortie FLV
+            "-flvflags", "no_duration_filesize",  # Optimisation FLV
+            rtmp_url  # URL de destination RTMP
+        ]
+
+        print(f"[DEBUG] Démarrage live {live.id}")
+        print(f"[DEBUG] Commande FFmpeg: {' '.join(ffmpeg_cmd)}")
+
+        # Lancer FFmpeg en arrière-plan
+        process = subprocess.Popen(
+            ffmpeg_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            preexec_fn=os.setsid  # Créer un nouveau groupe de processus
+        )
+
+        # Sauvegarder le PID et mettre à jour le statut
+        live.ffmpeg_pid = process.pid
+        live.status = "running"
+        live.save()
+
+        print(f"[DEBUG] Live {live.id} démarré avec PID {process.pid}")
+
+        return JsonResponse({
+            "success": True, 
+            "message": f"Live démarré avec succès (PID: {process.pid})"
+        })
+
+    except Exception as e:
+        print(f"[DEBUG] Erreur lors du démarrage du live {live.id}: {str(e)}")
+        live.status = "failed"
+        live.save()
+        return JsonResponse({
+            "success": False, 
+            "message": f"Erreur lors du démarrage: {str(e)}"
+        })
 
 
 @login_required
@@ -364,11 +417,47 @@ def stop_live(request, live_id):
     if not live.is_running:
         return JsonResponse({"success": False, "message": "Live non en cours"})
 
-    # Pour l'instant, on simule l'arrêt
-    live.status = "completed"
-    live.save()
+    try:
+        # Arrêter le processus FFmpeg si un PID est enregistré
+        if live.ffmpeg_pid:
+            print(f"[DEBUG] Arrêt du live {live.id} avec PID {live.ffmpeg_pid}")
+            
+            try:
+                # Tenter d'arrêter le processus proprement
+                os.killpg(os.getpgid(live.ffmpeg_pid), 15)  # SIGTERM
+                
+                # Attendre un peu pour voir si le processus s'arrête
+                import time
+                time.sleep(2)
+                
+                # Vérifier si le processus existe encore
+                try:
+                    os.kill(live.ffmpeg_pid, 0)  # Test si le processus existe
+                    # Si on arrive ici, le processus existe encore, le forcer
+                    os.killpg(os.getpgid(live.ffmpeg_pid), 9)  # SIGKILL
+                    print(f"[DEBUG] Processus {live.ffmpeg_pid} forcé à s'arrêter")
+                except OSError:
+                    print(f"[DEBUG] Processus {live.ffmpeg_pid} arrêté proprement")
+                    
+            except OSError as e:
+                print(f"[DEBUG] Erreur lors de l'arrêt du processus {live.ffmpeg_pid}: {e}")
+                # Le processus n'existe peut-être plus, continuer
 
-    return JsonResponse({"success": True, "message": "Live arrêté avec succès"})
+        # Mettre à jour le statut
+        live.status = "completed"
+        live.ffmpeg_pid = None
+        live.save()
+
+        print(f"[DEBUG] Live {live.id} arrêté avec succès")
+
+        return JsonResponse({"success": True, "message": "Live arrêté avec succès"})
+
+    except Exception as e:
+        print(f"[DEBUG] Erreur lors de l'arrêt du live {live.id}: {str(e)}")
+        return JsonResponse({
+            "success": False, 
+            "message": f"Erreur lors de l'arrêt: {str(e)}"
+        })
 
 
 @user_passes_test(is_admin)
