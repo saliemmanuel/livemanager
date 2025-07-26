@@ -32,10 +32,10 @@ class StreamKey(models.Model):
     name = models.CharField(max_length=100, verbose_name="Nom de la clé")
     key = models.CharField(max_length=500, verbose_name="Clé de diffusion")
     platform = models.CharField(
-        max_length=50, 
-        verbose_name="Plateforme", 
+        max_length=50,
+        verbose_name="Plateforme",
         choices=PLATFORM_CHOICES,
-        default="YouTube"
+        default="YouTube",
     )
     is_active = models.BooleanField(default=True, verbose_name="Active")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")

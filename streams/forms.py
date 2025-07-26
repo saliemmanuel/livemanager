@@ -41,9 +41,11 @@ class StreamKeyForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
-        
+
         # Ajouter une option vide au début des choix de plateforme
-        platform_choices = [("", "Sélectionnez une plateforme")] + list(self.fields["platform"].choices)
+        platform_choices = [("", "Sélectionnez une plateforme")] + list(
+            self.fields["platform"].choices
+        )
         self.fields["platform"].choices = platform_choices
         self.fields["platform"].widget.attrs.update({"class": "form-select"})
 
