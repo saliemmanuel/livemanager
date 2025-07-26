@@ -90,7 +90,8 @@ def create_live(request):
                     scp_file_path = os.path.join("media", "videos", video_file_name)
                     if not os.path.exists(scp_file_path):
                         raise Exception(
-                            f"Fichier {video_file_name} non trouvé. Vérifiez que l'upload SCP s'est bien terminé."
+                            f"Fichier {video_file_name} non trouvé. "
+                            "Vérifiez que l'upload SCP s'est bien terminé."
                         )
 
                     # Utiliser le fichier SCP
@@ -536,6 +537,8 @@ def check_file_exists(request):
             {
                 "success": True,
                 "exists": False,
-                "message": "Fichier non trouvé. Vérifiez que l'upload SCP s'est bien terminé.",
+                "message": (
+                    "Fichier non trouvé. Vérifiez que l'upload SCP s'est bien terminé."
+                ),
             }
         )
