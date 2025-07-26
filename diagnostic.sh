@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Script de diagnostic rapide pour LiveManager
-# Usage: ./diagnostic.sh
+# 🔍 Script de Diagnostic Rapide - LiveManager
+# Ce script diagnostique rapidement les problèmes de déploiement
 
-echo "🔍 Diagnostic LiveManager - $(date)"
-echo "=================================="
+# Variables
+PROJECT_DIR="/var/www/livemanager"
 
 # Couleurs
 RED='\033[0;31m'
@@ -13,175 +13,166 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Fonctions
-check_service() {
-    local service=$1
-    local status=$(systemctl is-active $service 2>/dev/null)
-    if [ "$status" = "active" ]; then
-        echo -e "${GREEN}✅ $service: ACTIF${NC}"
-    else
-        echo -e "${RED}❌ $service: INACTIF${NC}"
-        echo -e "${YELLOW}   Logs: sudo journalctl -u $service -n 10${NC}"
-    fi
+log() {
+    echo -e "${BLUE}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} $1"
 }
 
-check_port() {
-    local port=$1
-    local service=$2
-    if netstat -tlnp 2>/dev/null | grep -q ":$port "; then
-        echo -e "${GREEN}✅ Port $port ($service): OUVERT${NC}"
-    else
-        echo -e "${RED}❌ Port $port ($service): FERMÉ${NC}"
-    fi
+success() {
+    echo -e "${GREEN}✅ $1${NC}"
 }
 
-echo ""
-echo "📊 État des Services"
-echo "-------------------"
-check_service "nginx"
-check_service "postgresql"
-check_service "redis-server"
-check_service "livemanager"
+warning() {
+    echo -e "${YELLOW}⚠️  $1${NC}"
+}
 
-echo ""
-echo "🌐 Ports Ouverts"
-echo "---------------"
-check_port "80" "HTTP"
-check_port "443" "HTTPS"
-check_port "22" "SSH"
-check_port "5432" "PostgreSQL"
-check_port "6379" "Redis"
+error() {
+    echo -e "${RED}❌ $1${NC}"
+}
 
-echo ""
-echo "📁 Vérification des Répertoires"
-echo "------------------------------"
-if [ -d "/var/www/livemanager" ]; then
-    echo -e "${GREEN}✅ /var/www/livemanager: EXISTE${NC}"
-    echo "   Contenu: $(ls -la /var/www/livemanager | wc -l) fichiers"
-else
-    echo -e "${RED}❌ /var/www/livemanager: MANQUANT${NC}"
-fi
+echo -e "${BLUE}"
+echo "╔══════════════════════════════════════════════════════════════╗"
+echo "║                🔍 Diagnostic Rapide LiveManager              ║"
+echo "║              Identification des problèmes                    ║"
+echo "╚══════════════════════════════════════════════════════════════╝"
+echo -e "${NC}"
 
-if [ -d "/var/log/livemanager" ]; then
-    echo -e "${GREEN}✅ /var/log/livemanager: EXISTE${NC}"
-else
-    echo -e "${RED}❌ /var/log/livemanager: MANQUANT${NC}"
-fi
+# ============================================================================
+# DIAGNOSTIC DES SERVICES
+# ============================================================================
+log "📊 Diagnostic des services..."
 
-echo ""
-echo "🔐 Vérification des Permissions"
-echo "------------------------------"
-if [ -w "/var/www/livemanager" ]; then
-    echo -e "${GREEN}✅ Permissions /var/www/livemanager: OK${NC}"
-else
-    echo -e "${RED}❌ Permissions /var/www/livemanager: PROBLÈME${NC}"
-fi
-
-echo ""
-echo "🌍 Test de Connexion Locale"
-echo "---------------------------"
-if curl -s http://localhost:8000 > /dev/null 2>&1; then
-    echo -e "${GREEN}✅ Django local (port 8000): ACCESSIBLE${NC}"
-else
-    echo -e "${RED}❌ Django local (port 8000): INACCESSIBLE${NC}"
-fi
-
-if curl -s http://localhost > /dev/null 2>&1; then
-    echo -e "${GREEN}✅ Nginx local (port 80): ACCESSIBLE${NC}"
-else
-    echo -e "${RED}❌ Nginx local (port 80): INACCESSIBLE${NC}"
-fi
-
-echo ""
-echo "🔥 État du Firewall"
-echo "------------------"
-ufw_status=$(sudo ufw status 2>/dev/null | head -1)
-if echo "$ufw_status" | grep -q "Status: active"; then
-    echo -e "${GREEN}✅ UFW: ACTIF${NC}"
-    echo "   Règles:"
-    sudo ufw status numbered 2>/dev/null | grep -E "(80|443|22)" || echo "   Aucune règle pour HTTP/HTTPS/SSH"
-else
-    echo -e "${YELLOW}⚠️  UFW: INACTIF${NC}"
-fi
-
-echo ""
-echo "📋 Configuration Nginx"
-echo "--------------------"
-if [ -f "/etc/nginx/sites-enabled/livemanager" ]; then
-    echo -e "${GREEN}✅ Site livemanager: CONFIGURÉ${NC}"
-else
-    echo -e "${RED}❌ Site livemanager: NON CONFIGURÉ${NC}"
-fi
-
-if nginx -t > /dev/null 2>&1; then
-    echo -e "${GREEN}✅ Configuration Nginx: VALIDE${NC}"
-else
-    echo -e "${RED}❌ Configuration Nginx: INVALIDE${NC}"
-    echo -e "${YELLOW}   Erreur: nginx -t${NC}"
-fi
-
-echo ""
-echo "🗄️ Base de Données"
-echo "-----------------"
-if sudo -u postgres psql -c "\l" 2>/dev/null | grep -q "livemanager_db"; then
-    echo -e "${GREEN}✅ Base livemanager_db: EXISTE${NC}"
-else
-    echo -e "${RED}❌ Base livemanager_db: MANQUANTE${NC}"
-fi
-
-echo ""
-echo "🔧 Variables d'Environnement"
-echo "---------------------------"
-if [ -f "/var/www/livemanager/.env" ]; then
-    echo -e "${GREEN}✅ Fichier .env: EXISTE${NC}"
-    if grep -q "DEBUG=False" /var/www/livemanager/.env 2>/dev/null; then
-        echo -e "${GREEN}✅ DEBUG: False${NC}"
+# Vérifier les services principaux
+services=("nginx" "postgresql" "redis-server" "livemanager")
+for service in "${services[@]}"; do
+    if systemctl is-active --quiet $service; then
+        success "Service $service: ACTIF"
     else
-        echo -e "${YELLOW}⚠️  DEBUG: True (ou non défini)${NC}"
+        error "Service $service: INACTIF"
+    fi
+done
+
+# ============================================================================
+# DIAGNOSTIC DU PROJET
+# ============================================================================
+log "📁 Diagnostic du projet..."
+
+if [ -d "$PROJECT_DIR" ]; then
+    success "Répertoire projet: EXISTE"
+    cd $PROJECT_DIR
+    
+    if [ -f "manage.py" ]; then
+        success "Fichier manage.py: PRÉSENT"
+    else
+        error "Fichier manage.py: MANQUANT"
+    fi
+    
+    if [ -d "venv" ]; then
+        success "Environnement virtuel: PRÉSENT"
+    else
+        error "Environnement virtuel: MANQUANT"
+    fi
+    
+    if [ -f ".env" ]; then
+        success "Fichier .env: PRÉSENT"
+    else
+        error "Fichier .env: MANQUANT"
     fi
 else
-    echo -e "${RED}❌ Fichier .env: MANQUANT${NC}"
+    error "Répertoire projet: MANQUANT"
 fi
 
-echo ""
-echo "📊 Utilisation Système"
-echo "--------------------"
-echo "CPU: $(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)%"
-echo "Mémoire: $(free -m | awk 'NR==2{printf "%.1f%%", $3*100/$2}')"
-echo "Disque: $(df -h /var/www/livemanager | awk 'NR==2{print $5}')"
+# ============================================================================
+# DIAGNOSTIC DU SOCKET GUNICORN
+# ============================================================================
+log "🔌 Diagnostic du socket Gunicorn..."
 
-echo ""
-echo "🚨 Logs Récents (dernières 5 lignes)"
-echo "-----------------------------------"
-echo "Nginx Error:"
-sudo tail -n 5 /var/log/nginx/error.log 2>/dev/null || echo "   Aucun log d'erreur"
+if [ -S "$PROJECT_DIR/livemanager.sock" ]; then
+    success "Socket Gunicorn: PRÉSENT"
+    ls -la $PROJECT_DIR/livemanager.sock
+else
+    error "Socket Gunicorn: MANQUANT"
+fi
 
-echo ""
-echo "Django:"
-sudo journalctl -u livemanager -n 5 --no-pager 2>/dev/null || echo "   Aucun log Django"
+# ============================================================================
+# DIAGNOSTIC DES PORTS
+# ============================================================================
+log "🌐 Diagnostic des ports..."
 
-echo ""
-echo "🔧 Commandes de Résolution"
-echo "-------------------------"
-echo "1. Redémarrer les services:"
-echo "   sudo systemctl restart nginx livemanager postgresql redis-server"
-echo ""
-echo "2. Vérifier les logs en temps réel:"
-echo "   sudo journalctl -u livemanager -f"
-echo "   sudo tail -f /var/log/nginx/error.log"
-echo ""
-echo "3. Tester Django manuellement:"
-echo "   cd /var/www/livemanager && source venv/bin/activate"
-echo "   python manage.py runserver 0.0.0.0:8000"
-echo ""
-echo "4. Vérifier la configuration:"
-echo "   nginx -t"
-echo "   python manage.py check"
-echo ""
-echo "5. Corriger les permissions:"
-echo "   sudo chown -R livemanager:livemanager /var/www/livemanager"
-echo "   sudo chmod -R 755 /var/www/livemanager"
+# Vérifier les ports ouverts
+if netstat -tlnp | grep -q ":80 "; then
+    success "Port 80: OUVERT"
+else
+    error "Port 80: FERMÉ"
+fi
 
-echo ""
-echo "📞 Si le problème persiste, consultez TROUBLESHOOTING.md"
-echo "======================================================" 
+if netstat -tlnp | grep -q ":443 "; then
+    success "Port 443: OUVERT"
+else
+    warning "Port 443: FERMÉ (normal si pas de SSL)"
+fi
+
+# ============================================================================
+# DIAGNOSTIC DE LA BASE DE DONNÉES
+# ============================================================================
+log "🗄️ Diagnostic de la base de données..."
+
+if sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw livemanager_db; then
+    success "Base de données livemanager_db: EXISTE"
+else
+    error "Base de données livemanager_db: MANQUANTE"
+fi
+
+# ============================================================================
+# DIAGNOSTIC DES LOGS
+# ============================================================================
+log "📋 Diagnostic des logs..."
+
+echo -e "${YELLOW}📄 Logs récents du service livemanager:${NC}"
+journalctl -u livemanager --no-pager -l -n 10
+
+echo -e "${YELLOW}📄 Logs récents de Nginx:${NC}"
+tail -n 10 /var/log/nginx/error.log 2>/dev/null || echo "Fichier de log Nginx non trouvé"
+
+# ============================================================================
+# TEST DE CONNEXION
+# ============================================================================
+log "🌐 Test de connexion..."
+
+# Test local
+if curl -s http://localhost > /dev/null; then
+    success "Connexion locale: RÉUSSIE"
+else
+    error "Connexion locale: ÉCHEC"
+fi
+
+# Test avec l'IP du serveur
+SERVER_IP=$(hostname -I | awk '{print $1}')
+if curl -s http://$SERVER_IP > /dev/null; then
+    success "Connexion via IP ($SERVER_IP): RÉUSSIE"
+else
+    error "Connexion via IP ($SERVER_IP): ÉCHEC"
+fi
+
+# ============================================================================
+# RÉSUMÉ ET RECOMMANDATIONS
+# ============================================================================
+echo -e "${BLUE}"
+echo "╔══════════════════════════════════════════════════════════════╗"
+echo "║                    📋 RÉSUMÉ DU DIAGNOSTIC                  ║"
+echo "╚══════════════════════════════════════════════════════════════╝"
+echo -e "${NC}"
+
+echo -e "${YELLOW}🔧 Commandes utiles pour résoudre les problèmes:${NC}"
+echo -e "  sudo systemctl status livemanager"
+echo -e "  sudo systemctl restart livemanager"
+echo -e "  sudo journalctl -u livemanager -f"
+echo -e "  sudo nginx -t"
+echo -e "  sudo systemctl restart nginx"
+echo -e "  sudo ./fix_502.sh"
+
+echo -e "${YELLOW}📁 Vérifications manuelles:${NC}"
+echo -e "  ls -la $PROJECT_DIR/"
+echo -e "  ls -la $PROJECT_DIR/livemanager.sock"
+echo -e "  sudo -u www-data python $PROJECT_DIR/manage.py check"
+
+echo -e "${GREEN}🚀 Si des problèmes persistent, exécutez: sudo ./fix_502.sh${NC}" 
