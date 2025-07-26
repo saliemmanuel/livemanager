@@ -36,22 +36,16 @@ class StreamKeyForm(forms.ModelForm):
                     "placeholder": "rtmp://a.rtmp.youtube.com/live2/...",
                 }
             ),
-            "platform": forms.Select(
-                attrs={"class": "form-select"},
-                choices=[
-                    ("YouTube", "YouTube"),
-                    ("Twitch", "Twitch"),
-                    ("Facebook", "Facebook"),
-                    ("Instagram", "Instagram"),
-                    ("TikTok", "TikTok"),
-                    ("Autre", "Autre"),
-                ],
-            ),
         }
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
+        
+        # Ajouter une option vide au début des choix de plateforme
+        platform_choices = [("", "Sélectionnez une plateforme")] + list(self.fields["platform"].choices)
+        self.fields["platform"].choices = platform_choices
+        self.fields["platform"].widget.attrs.update({"class": "form-select"})
 
     def save(self, commit=True):
         stream_key = super().save(commit=False)

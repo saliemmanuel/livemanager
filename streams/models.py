@@ -19,11 +19,23 @@ class User(AbstractUser):
 class StreamKey(models.Model):
     """Modèle pour les clés de streaming des utilisateurs."""
 
+    PLATFORM_CHOICES = [
+        ("YouTube", "YouTube"),
+        ("Twitch", "Twitch"),
+        ("Facebook", "Facebook"),
+        ("Instagram", "Instagram"),
+        ("TikTok", "TikTok"),
+        ("Autre", "Autre"),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Utilisateur")
     name = models.CharField(max_length=100, verbose_name="Nom de la clé")
     key = models.CharField(max_length=500, verbose_name="Clé de diffusion")
     platform = models.CharField(
-        max_length=50, verbose_name="Plateforme", default="YouTube"
+        max_length=50, 
+        verbose_name="Plateforme", 
+        choices=PLATFORM_CHOICES,
+        default="YouTube"
     )
     is_active = models.BooleanField(default=True, verbose_name="Active")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
