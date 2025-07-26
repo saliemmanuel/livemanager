@@ -59,14 +59,14 @@
                     {% if user.is_authenticated %}
                         {% if user.is_admin %}
                             <a href="{% url 'admin_dashboard' %}" class="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                                Dashboard
+                                🛠️ Administration
                             </a>
                             <a href="{% url 'admin_users' %}" class="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
                                 👥 Utilisateurs
                             </a>
                         {% endif %}
                         <a href="{% url 'dashboard' %}" class="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                            Dashboard
+                            📊 Mon Dashboard
                         </a>
                         <form method="post" action="{% url 'logout' %}" class="inline">
                             {% csrf_token %}
