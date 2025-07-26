@@ -26,7 +26,7 @@ else
 fi
 ```
 
-## ✨ **Fonctionnalités Intelligentes**
+## ✨ **Fonctionnalités Intelligente s**
 
 ### 🛡️ **1. Préservation des Données**
 
