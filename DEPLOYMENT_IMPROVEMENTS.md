@@ -32,7 +32,7 @@ fi
 
 #### **Fichiers Sauvegardés Automatiquement**
 - **`.env`** : Variables d'environnement et clés secrètes
-- **`media/`** : Fichiers uploadés par les utilisateurs
+- **`media/`** : Fichiers uploadés par les utilisateurs 
 - **`staticfiles/`** : Fichiers statiques collectés
 - **`db.sqlite3`** : Base de données (si SQLite)
 
