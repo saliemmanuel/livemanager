@@ -336,7 +336,9 @@ def delete_user(request, user_id):
 def upload_chunk(request):
     """Réception d'un chunk vidéo et assemblage côté serveur."""
     if request.method != "POST":
-        return JsonResponse({"success": False, "message": "Méthode non autorisée"}, status=405)
+        return JsonResponse(
+            {"success": False, "message": "Méthode non autorisée"}, status=405
+        )
 
     user = request.user
     chunk = request.FILES.get("chunk")
@@ -346,7 +348,9 @@ def upload_chunk(request):
     file_name = request.POST.get("file_name")
 
     if not all([chunk, chunk_number >= 0, total_chunks > 0, file_id, file_name]):
-        return JsonResponse({"success": False, "message": "Paramètres manquants"}, status=400)
+        return JsonResponse(
+            {"success": False, "message": "Paramètres manquants"}, status=400
+        )
 
     # Dossier temporaire par utilisateur et fichier
     temp_dir = os.path.join("media", "temp_chunks", str(user.id), file_id)
@@ -376,6 +380,10 @@ def upload_chunk(request):
             os.rmdir(temp_dir)
         except Exception:
             pass
-        return JsonResponse({"success": True, "message": "Fichier assemblé", "file_path": final_path})
+        return JsonResponse(
+            {"success": True, "message": "Fichier assemblé", "file_path": final_path}
+        )
     else:
-        return JsonResponse({"success": True, "message": f"Chunk {chunk_number+1}/{total_chunks} reçu"})
+        return JsonResponse(
+            {"success": True, "message": f"Chunk {chunk_number+1}/{total_chunks} reçu"}
+        )
