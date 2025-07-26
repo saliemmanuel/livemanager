@@ -153,8 +153,8 @@ nano .env
 Configuration `.env` minimale :
 ```bash
 DEBUG=False
-SECRET_KEY=votre-clé-secrète-très-longue
-ALLOWED_HOSTS=91.108.112.77,votre-domaine.com
+SECRET_KEY=votre-clé-secrète-très-longue-et-sécurisée
+ALLOWED_HOSTS=91.108.112.77
 DATABASE_URL=postgresql://livemanager:motdepasse_securise@localhost:5432/livemanager_db
 EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
 FFMPEG_PATH=/usr/bin/ffmpeg
@@ -337,3 +337,192 @@ sudo systemctl restart redis-server
 - [ ] Variables d'environnement configurées
 
 **Une fois ces étapes terminées, votre site devrait être accessible sur http://91.108.112.77** 🚀 
+
+## 🔧 **Solution : Configuration Nginx pour LiveManager**
+
+### **Étape 1 : Se connecter au VPS**
+
+```bash
+ssh livemanager@91.108.112.77
+```
+
+### **Étape 2 : Vérifier l'état actuel**
+
+```bash
+# Vérifier si le code Django est présent
+ls -la /var/www/livemanager/
+
+# Vérifier les services
+sudo systemctl status livemanager
+sudo systemctl status nginx
+```
+
+### **Étape 3 : Configurer Nginx pour LiveManager**
+
+```bash
+# Créer la configuration Nginx pour LiveManager
+sudo nano /etc/nginx/sites-available/livemanager
+```
+
+**Copiez ce contenu :**
+
+```nginx
+server {
+    listen 80;
+    server_name 91.108.112.77;
+
+    # Fichiers statiques
+    location /static/ {
+        alias /var/www/livemanager/staticfiles/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Fichiers media
+    location /media/ {
+        alias /var/www/livemanager/media/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Proxy vers Django
+    location / {
+        proxy_pass http://unix:/var/www/livemanager/livemanager.sock;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+```
+
+### **Étape 4 : Activer la configuration**
+
+```bash
+# Activer le site LiveManager
+sudo ln -s /etc/nginx/sites-available/livemanager /etc/nginx/sites-enabled/
+
+# Supprimer la configuration par défaut
+sudo rm -f /etc/nginx/sites-enabled/default
+
+# Tester la configuration Nginx
+sudo nginx -t
+
+# Redémarrer Nginx
+sudo systemctl restart nginx
+```
+
+### **Étape 5 : Vérifier que Django fonctionne**
+
+```bash
+# Aller dans le répertoire du projet
+cd /var/www/livemanager
+
+# Vérifier que le code est présent
+ls -la
+
+# Si le code n'est pas présent, le cloner
+git clone https://github.com/votre-username/livemanager.git .
+
+# Créer l'environnement virtuel si nécessaire
+python3 -m venv venv
+source venv/bin/activate
+
+# Installer les dépendances
+pip install -r requirements.txt
+
+# Configurer les variables d'environnement
+cp env.example .env
+nano .env
+```
+
+**Configuration `.env` minimale :**
+```bash
+DEBUG=False
+SECRET_KEY=votre-clé-secrète-très-longue-et-sécurisée
+ALLOWED_HOSTS=91.108.112.77
+DATABASE_URL=postgresql://livemanager:motdepasse_securise@localhost:5432/livemanager_db
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+FFMPEG_PATH=/usr/bin/ffmpeg
+```
+
+### **Étape 6 : Configurer la base de données**
+
+```bash
+# Appliquer les migrations
+python manage.py migrate
+
+# Créer un superuser
+python manage.py createsuperuser
+
+# Collecter les fichiers statiques
+python manage.py collectstatic --noinput
+```
+
+### **Étape 7 : Configurer le service Django**
+
+```bash
+# Créer le service systemd
+sudo nano /etc/systemd/system/livemanager.service
+```
+
+**Contenu du service :**
+```ini
+[Unit]
+Description=LiveManager Django Application
+After=network.target postgresql.service redis-server.service
+
+[Service]
+Type=notify
+User=livemanager
+Group=livemanager
+WorkingDirectory=/var/www/livemanager
+Environment=PATH=/var/www/livemanager/venv/bin
+ExecStart=/var/www/livemanager/venv/bin/gunicorn --workers 3 --bind unix:/var/www/livemanager/livemanager.sock livemanager.wsgi:application
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+# Activer et démarrer le service
+sudo systemctl daemon-reload
+sudo systemctl enable livemanager
+sudo systemctl start livemanager
+```
+
+### **Étape 8 : Vérifier et redémarrer**
+
+```bash
+# Vérifier l'état des services
+sudo systemctl status livemanager
+sudo systemctl status nginx
+
+# Redémarrer tous les services
+sudo systemctl restart nginx livemanager postgresql redis-server
+
+# Vérifier les logs
+sudo journalctl -u livemanager -f
+```
+
+### **Étape 9 : Tester**
+
+Maintenant, rafraîchissez votre navigateur sur `http://91.108.112.77` - vous devriez voir votre application LiveManager au lieu de la page "Welcome to nginx!"
+
+## 🚨 **Si ça ne fonctionne toujours pas**
+
+Exécutez le diagnostic pour identifier le problème :
+
+```bash
+wget https://raw.githubusercontent.com/votre-username/livemanager/main/diagnostic.sh
+chmod +x diagnostic.sh
+./diagnostic.sh
+```
+
+**Le problème principal était que Nginx servait sa page par défaut au lieu de votre application Django. Cette configuration va résoudre cela ! 🚀** 
