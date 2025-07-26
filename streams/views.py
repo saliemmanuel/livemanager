@@ -355,32 +355,51 @@ def start_live(request, live_id):
         # Construire la commande FFmpeg
         video_path = os.path.join("media", live.video_file.name)
         if not os.path.exists(video_path):
-            return JsonResponse({"success": False, "message": "Fichier vidéo non trouvé"})
+            return JsonResponse(
+                {"success": False, "message": "Fichier vidéo non trouvé"}
+            )
 
         # Construire l'URL RTMP avec la clé de streaming
         rtmp_url = live.stream_key.key
-        
+
         # Commande FFmpeg pour le streaming
         ffmpeg_cmd = [
-            "setsid", "ffmpeg",
+            "setsid",
+            "ffmpeg",
             "-re",  # Lire à la vitesse réelle
-            "-stream_loop", "-1",  # Boucle infinie
-            "-i", video_path,  # Fichier d'entrée
-            "-c:v", "libx264",  # Codec vidéo H.264
-            "-preset", "ultrafast",  # Preset rapide pour streaming
-            "-b:v", "500k",  # Bitrate vidéo 500k
-            "-maxrate", "800k",  # Bitrate maximum 800k
-            "-bufsize", "1200k",  # Taille du buffer 1200k
-            "-s", "640x360",  # Résolution 640x360
-            "-g", "60",  # GOP size 60
-            "-keyint_min", "60",  # Keyframe minimum 60
-            "-c:a", "aac",  # Codec audio AAC
-            "-b:a", "96k",  # Bitrate audio 96k
-            "-f", "flv",  # Format de sortie FLV
-            "-reconnect", "1",  # Activer la reconnexion
-            "-reconnect_streamed", "1",  # Reconnexion pour streaming
-            "-reconnect_delay_max", "2",  # Délai max de reconnexion 2s
-            rtmp_url  # URL de destination RTMP
+            "-stream_loop",
+            "-1",  # Boucle infinie
+            "-i",
+            video_path,  # Fichier d'entrée
+            "-c:v",
+            "libx264",  # Codec vidéo H.264
+            "-preset",
+            "ultrafast",  # Preset rapide pour streaming
+            "-b:v",
+            "500k",  # Bitrate vidéo 500k
+            "-maxrate",
+            "800k",  # Bitrate maximum 800k
+            "-bufsize",
+            "1200k",  # Taille du buffer 1200k
+            "-s",
+            "640x360",  # Résolution 640x360
+            "-g",
+            "60",  # GOP size 60
+            "-keyint_min",
+            "60",  # Keyframe minimum 60
+            "-c:a",
+            "aac",  # Codec audio AAC
+            "-b:a",
+            "96k",  # Bitrate audio 96k
+            "-f",
+            "flv",  # Format de sortie FLV
+            "-reconnect",
+            "1",  # Activer la reconnexion
+            "-reconnect_streamed",
+            "1",  # Reconnexion pour streaming
+            "-reconnect_delay_max",
+            "2",  # Délai max de reconnexion 2s
+            rtmp_url,  # URL de destination RTMP
         ]
 
         print(f"[DEBUG] Démarrage live {live.id}")
@@ -401,19 +420,20 @@ def start_live(request, live_id):
 
         print(f"[DEBUG] Live {live.id} démarré avec PID {process.pid}")
 
-        return JsonResponse({
-            "success": True, 
-            "message": f"Live démarré avec succès (PID: {process.pid})"
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "message": f"Live démarré avec succès (PID: {process.pid})",
+            }
+        )
 
     except Exception as e:
         print(f"[DEBUG] Erreur lors du démarrage du live {live.id}: {str(e)}")
         live.status = "failed"
         live.save()
-        return JsonResponse({
-            "success": False, 
-            "message": f"Erreur lors du démarrage: {str(e)}"
-        })
+        return JsonResponse(
+            {"success": False, "message": f"Erreur lors du démarrage: {str(e)}"}
+        )
 
 
 @login_required
@@ -429,16 +449,17 @@ def stop_live(request, live_id):
         # Arrêter le processus FFmpeg si un PID est enregistré
         if live.ffmpeg_pid:
             print(f"[DEBUG] Arrêt du live {live.id} avec PID {live.ffmpeg_pid}")
-            
+
             try:
                 # Avec setsid, le processus est le leader du groupe de session
                 # On peut donc l'arrêter directement avec son PID
                 os.kill(live.ffmpeg_pid, 15)  # SIGTERM
-                
+
                 # Attendre un peu pour voir si le processus s'arrête
                 import time
+
                 time.sleep(2)
-                
+
                 # Vérifier si le processus existe encore
                 try:
                     os.kill(live.ffmpeg_pid, 0)  # Test si le processus existe
@@ -447,9 +468,12 @@ def stop_live(request, live_id):
                     print(f"[DEBUG] Processus {live.ffmpeg_pid} forcé à s'arrêter")
                 except OSError:
                     print(f"[DEBUG] Processus {live.ffmpeg_pid} arrêté proprement")
-                    
+
             except OSError as e:
-                print(f"[DEBUG] Erreur lors de l'arrêt du processus {live.ffmpeg_pid}: {e}")
+                print(
+                    f"[DEBUG] Erreur lors de l'arrêt du processus "
+                    f"{live.ffmpeg_pid}: {e}"
+                )
                 # Le processus n'existe peut-être plus, continuer
 
         # Mettre à jour le statut
@@ -463,10 +487,9 @@ def stop_live(request, live_id):
 
     except Exception as e:
         print(f"[DEBUG] Erreur lors de l'arrêt du live {live.id}: {str(e)}")
-        return JsonResponse({
-            "success": False, 
-            "message": f"Erreur lors de l'arrêt: {str(e)}"
-        })
+        return JsonResponse(
+            {"success": False, "message": f"Erreur lors de l'arrêt: {str(e)}"}
+        )
 
 
 @user_passes_test(is_admin)
