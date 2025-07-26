@@ -16,6 +16,8 @@ sudo systemctl status postgresql
 sudo systemctl status redis-server
 ```
 
+
+
 #### **2. Vérifier les logs**
 ```bash
 # Logs Nginx

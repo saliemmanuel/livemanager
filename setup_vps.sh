@@ -25,7 +25,7 @@ success() {
     echo -e "${GREEN}[SUCCÈS]${NC} $1"
 }
 
-warning() {
+warning() { 
     echo -e "${YELLOW}[ATTENTION]${NC} $1"
 }
 
