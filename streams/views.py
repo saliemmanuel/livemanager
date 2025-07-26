@@ -75,30 +75,38 @@ def create_live(request):
                 live.save()
 
                 # Réponse JSON pour les uploads AJAX
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        "success": True,
-                        "message": "Live créé avec succès !",
-                        "redirect_url": reverse("dashboard")
-                    })
-                
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return JsonResponse(
+                        {
+                            "success": True,
+                            "message": "Live créé avec succès !",
+                            "redirect_url": reverse("dashboard"),
+                        }
+                    )
+
                 messages.success(request, "Live créé avec succès !")
                 return redirect("dashboard")
             except Exception as e:
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        "success": False,
-                        "message": f"Erreur lors de la création: {str(e)}"
-                    }, status=400)
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return JsonResponse(
+                        {
+                            "success": False,
+                            "message": f"Erreur lors de la création: {str(e)}",
+                        },
+                        status=400,
+                    )
                 else:
                     messages.error(request, f"Erreur lors de la création: {str(e)}")
         else:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    "success": False,
-                    "message": "Données invalides",
-                    "errors": form.errors
-                }, status=400)
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "message": "Données invalides",
+                        "errors": form.errors,
+                    },
+                    status=400,
+                )
     else:
         form = LiveForm()
 
