@@ -11,6 +11,8 @@ from django.urls import reverse
 from django.db.models import Q
 from .models import User, Live
 from .forms import UserRegistrationForm, LiveForm
+from django.views.decorators.csrf import csrf_exempt
+import hashlib
 
 
 def is_admin(user):
@@ -327,3 +329,53 @@ def delete_user(request, user_id):
     user.delete()
     messages.success(request, f"Utilisateur {username} supprimé avec succès.")
     return redirect("admin_users")
+
+
+@csrf_exempt
+@login_required
+def upload_chunk(request):
+    """Réception d'un chunk vidéo et assemblage côté serveur."""
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Méthode non autorisée"}, status=405)
+
+    user = request.user
+    chunk = request.FILES.get("chunk")
+    chunk_number = int(request.POST.get("chunk_number", -1))
+    total_chunks = int(request.POST.get("total_chunks", -1))
+    file_id = request.POST.get("file_id")
+    file_name = request.POST.get("file_name")
+
+    if not all([chunk, chunk_number >= 0, total_chunks > 0, file_id, file_name]):
+        return JsonResponse({"success": False, "message": "Paramètres manquants"}, status=400)
+
+    # Dossier temporaire par utilisateur et fichier
+    temp_dir = os.path.join("media", "temp_chunks", str(user.id), file_id)
+    os.makedirs(temp_dir, exist_ok=True)
+    chunk_path = os.path.join(temp_dir, f"chunk_{chunk_number:05d}")
+
+    # Sauvegarder le chunk
+    with open(chunk_path, "wb") as f:
+        for c in chunk.chunks():
+            f.write(c)
+
+    # Vérifier si tous les chunks sont présents
+    received_chunks = [f for f in os.listdir(temp_dir) if f.startswith("chunk_")]
+    if len(received_chunks) == total_chunks:
+        # Assembler le fichier final
+        final_path = os.path.join("media", "videos", f"{file_id}_{file_name}")
+        os.makedirs(os.path.dirname(final_path), exist_ok=True)
+        with open(final_path, "wb") as outfile:
+            for i in range(total_chunks):
+                part_path = os.path.join(temp_dir, f"chunk_{i:05d}")
+                with open(part_path, "rb") as infile:
+                    outfile.write(infile.read())
+        # Nettoyer les chunks
+        for f in received_chunks:
+            os.remove(os.path.join(temp_dir, f))
+        try:
+            os.rmdir(temp_dir)
+        except Exception:
+            pass
+        return JsonResponse({"success": True, "message": "Fichier assemblé", "file_path": final_path})
+    else:
+        return JsonResponse({"success": True, "message": f"Chunk {chunk_number+1}/{total_chunks} reçu"})

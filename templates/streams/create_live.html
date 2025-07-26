@@ -375,78 +375,111 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Gestion de la soumission du formulaire
-    liveForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const fileToUpload = compressedFile || originalFile;
-        
-        if (!fileToUpload) {
-            alert('Veuillez sélectionner un fichier vidéo.');
+const CHUNK_SIZE = 5 * 1024 * 1024; // 5 Mo
+const MAX_SIZE = 1024 * 1024 * 1024; // 1 Go
+let fileId = null;
+
+function generateFileId(file) {
+    // Hash simple basé sur nom+taille+date
+    return (
+        file.name + '_' + file.size + '_' + file.lastModified + '_' + Math.random()
+    ).replace(/[^a-zA-Z0-9]/g, '');
+}
+
+async function uploadFileInChunks(file, onProgress, onDone, onError) {
+    if (file.size > MAX_SIZE) {
+        alert('Le fichier est trop volumineux. Taille maximum: 1 Go');
+        return;
+    }
+    fileId = generateFileId(file);
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    let currentChunk = 0;
+    let uploadedBytes = 0;
+    let retryCount = 0;
+    const maxRetries = 5;
+
+    async function sendChunk() {
+        if (currentChunk >= totalChunks) {
+            onDone();
             return;
         }
-
-        // Créer un nouveau FormData avec le fichier compressé
+        const start = currentChunk * CHUNK_SIZE;
+        const end = Math.min(file.size, start + CHUNK_SIZE);
+        const chunkBlob = file.slice(start, end);
         const formData = new FormData();
+        formData.append('chunk', chunkBlob);
+        formData.append('chunk_number', currentChunk);
+        formData.append('total_chunks', totalChunks);
+        formData.append('file_id', fileId);
+        formData.append('file_name', file.name);
+        // Ajout des autres champs du formulaire
         formData.append('title', document.getElementById('id_title').value);
-        formData.append('video_file', fileToUpload);
-        
-        const scheduledAt = document.getElementById('id_scheduled_at').value;
+        const scheduledAt = document.getElementById('id_scheduled_at')?.value;
         if (scheduledAt) {
             formData.append('scheduled_at', scheduledAt);
         }
-
-        // Afficher la barre de progression
-        uploadProgress.classList.remove('hidden');
-        submitBtn.disabled = true;
-        submitText.classList.add('hidden');
-        submitLoading.classList.remove('hidden');
-
-        // Démarrer le suivi de l'upload
-        uploadStartTime = Date.now();
-        startProgressTracking();
-
-        // Envoyer le formulaire avec XMLHttpRequest pour suivre la progression
-        const xhr = new XMLHttpRequest();
-        
-        xhr.upload.addEventListener('progress', function(e) {
-            if (e.lengthComputable) {
-                const percentComplete = (e.loaded / e.total) * 100;
-                progressBar.style.width = percentComplete + '%';
-                uploadPercentage.textContent = Math.round(percentComplete) + '%';
-                
-                // Calculer la vitesse
-                const elapsed = Date.now() - uploadStartTime;
-                if (elapsed > 0) {
-                    const speed = e.loaded / elapsed * 1000; // bytes per second
-                    uploadSpeed.textContent = formatFileSize(speed) + '/s';
+        try {
+            const response = await fetch('/upload-chunk/', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 }
-            }
-        });
-
-        xhr.addEventListener('load', function() {
-            stopProgressTracking();
-            if (xhr.status === 200) {
-                // Succès - rediriger vers le dashboard
-                window.location.href = '{% url "dashboard" %}';
+            });
+            if (!response.ok) throw new Error(await response.text());
+            uploadedBytes = end;
+            onProgress(uploadedBytes, file.size, currentChunk + 1, totalChunks);
+            currentChunk++;
+            retryCount = 0;
+            sendChunk();
+        } catch (err) {
+            if (retryCount < maxRetries) {
+                retryCount++;
+                setTimeout(sendChunk, 1000 * retryCount); // backoff
             } else {
-                // Erreur
-                alert('Erreur lors de l\'upload: ' + xhr.responseText);
-                resetForm();
+                onError('Erreur lors de l\'upload du chunk ' + (currentChunk + 1) + ': ' + err);
             }
-        });
+        }
+    }
+    sendChunk();
+}
 
-        xhr.addEventListener('error', function() {
+// Remplacer la soumission du formulaire
+liveForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const fileToUpload = compressedFile || originalFile;
+    if (!fileToUpload) {
+        alert('Veuillez sélectionner un fichier vidéo.');
+        return;
+    }
+    // Afficher la barre de progression
+    uploadProgress.classList.remove('hidden');
+    submitBtn.disabled = true;
+    submitText.classList.add('hidden');
+    submitLoading.classList.remove('hidden');
+    uploadStartTime = Date.now();
+    startProgressTracking();
+    uploadFileInChunks(
+        fileToUpload,
+        function (uploaded, total, chunkNum, totalChunks) {
+            const percent = (uploaded / total) * 100;
+            progressBar.style.width = percent + '%';
+            uploadPercentage.textContent = Math.round(percent) + '%';
+            uploadSpeed.textContent = formatFileSize(uploaded / ((Date.now() - uploadStartTime) / 1000)) + '/s';
+            uploadTime.textContent = 'Chunk ' + chunkNum + '/' + totalChunks;
+        },
+        function () {
             stopProgressTracking();
-            alert('Erreur de connexion lors de l\'upload.');
+            window.location.href = '{% url "dashboard" %}';
+        },
+        function (err) {
+            stopProgressTracking();
+            alert(err);
             resetForm();
-        });
-
-        xhr.open('POST', window.location.href);
-        xhr.setRequestHeader('X-CSRFToken', document.querySelector('[name=csrfmiddlewaretoken]').value);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.send(formData);
-    });
+        }
+    );
+});
 });
 </script>
 {% endblock %} 
