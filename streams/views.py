@@ -93,7 +93,7 @@ def create_live(request):
                             "success": False,
                             "message": f"Erreur lors de la création: {str(e)}",
                         },
-                        status=400, 
+                        status=400,
                     )
                 else:
                     messages.error(request, f"Erreur lors de la création: {str(e)}")
@@ -188,14 +188,12 @@ def admin_users(request):
 
     context = {
         "users": users,
+        "total_users": total_users,
+        "pending_users": pending_users,
+        "approved_users": approved_users,
+        "admin_users": admin_users,
         "search": search,
         "status_filter": status_filter,
-        "stats": {
-            "total": total_users,
-            "pending": pending_users,
-            "approved": approved_users,
-            "admin": admin_users,
-        },
     }
 
     return render(request, "streams/admin_users.html", context)
@@ -204,47 +202,43 @@ def admin_users(request):
 @user_passes_test(is_admin)
 @require_POST
 def approve_user(request, user_id):
-    """Approbation d'un utilisateur."""
+    """Approuver un utilisateur."""
     user = get_object_or_404(User, id=user_id)
     user.is_approved = True
     user.save()
-
-    messages.success(request, f"Utilisateur {user.email} approuvé avec succès.")
+    messages.success(request, f"Utilisateur {user.username} approuvé avec succès.")
     return redirect("admin_users")
 
 
 @user_passes_test(is_admin)
 @require_POST
 def reject_user(request, user_id):
-    """Rejet d'un utilisateur."""
+    """Rejeter un utilisateur."""
     user = get_object_or_404(User, id=user_id)
     user.is_approved = False
     user.save()
-
-    messages.warning(request, f"Utilisateur {user.email} rejeté.")
+    messages.success(request, f"Utilisateur {user.username} rejeté.")
     return redirect("admin_users")
 
 
 @user_passes_test(is_admin)
 @require_POST
 def toggle_admin(request, user_id):
-    """Activation/désactivation du statut admin."""
+    """Basculer le statut admin d'un utilisateur."""
     user = get_object_or_404(User, id=user_id)
     user.is_admin = not user.is_admin
     user.save()
-
-    status = "administrateur" if user.is_admin else "utilisateur"
-    messages.success(request, f"{user.email} est maintenant {status}.")
+    status = "admin" if user.is_admin else "utilisateur"
+    messages.success(request, f"{user.username} est maintenant {status}.")
     return redirect("admin_users")
 
 
 @user_passes_test(is_admin)
 @require_POST
 def delete_user(request, user_id):
-    """Suppression d'un utilisateur."""
+    """Supprimer un utilisateur."""
     user = get_object_or_404(User, id=user_id)
-    email = user.email
+    username = user.username
     user.delete()
-
-    messages.success(request, f"Utilisateur {email} supprimé avec succès.")
+    messages.success(request, f"Utilisateur {username} supprimé avec succès.")
     return redirect("admin_users")
