@@ -11,7 +11,6 @@ from django.urls import reverse
 from django.db.models import Q
 from .models import User, Live, StreamKey
 from .forms import UserRegistrationForm, LiveForm, StreamKeyForm
-from django.views.decorators.csrf import csrf_exempt
 
 
 def is_admin(user):
@@ -199,15 +198,16 @@ def create_live(request):
 
                         if result.returncode == 0:
                             # Sauvegarder le chemin de la vidéo décompressée
-                            live.video_file = (
-                                f"videos/decompressed_{video_file.name}"
-                            )
+                            live.video_file = f"videos/decompressed_{video_file.name}"
                             live.save()
 
                             # Nettoyer le fichier temporaire
                             os.unlink(temp_file_path)
 
-                            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                            if (
+                                request.headers.get("X-Requested-With")
+                                == "XMLHttpRequest"
+                            ):
                                 return JsonResponse(
                                     {
                                         "success": True,
@@ -225,9 +225,7 @@ def create_live(request):
                             )
                             return redirect("dashboard")
                         else:
-                            raise Exception(
-                                f"Erreur FFmpeg: {result.stderr}"
-                            )
+                            raise Exception(f"Erreur FFmpeg: {result.stderr}")
 
                     except Exception as e:
                         # Nettoyer le fichier temporaire en cas d'erreur
