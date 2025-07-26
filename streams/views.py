@@ -145,7 +145,7 @@ def create_live(request):
     if request.method == "POST":
         print(f"[DEBUG] Création de live - Utilisateur: {request.user.username}")
         print(f"[DEBUG] Fichiers reçus: {list(request.FILES.keys())}")
-        
+
         form = LiveForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             print("[DEBUG] Formulaire valide")
@@ -156,7 +156,10 @@ def create_live(request):
                 # Upload normal via navigateur
                 if "video_file" in request.FILES:
                     video_file = request.FILES["video_file"]
-                    print(f"[DEBUG] Fichier vidéo reçu: {video_file.name}, taille: {video_file.size}")
+                    print(
+                        f"[DEBUG] Fichier vidéo reçu: {video_file.name}, "
+                        f"taille: {video_file.size}"
+                    )
 
                     # Créer un fichier temporaire pour la vidéo compressée
                     with tempfile.NamedTemporaryFile(
