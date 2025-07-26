@@ -161,25 +161,30 @@ def create_live(request):
                         f"taille: {video_file.size}"
                     )
 
-                    # Option temporaire : désactiver la compression si FFmpeg n'est pas disponible
+                    # Option temporaire : désactiver la compression si FFmpeg n'est pas
+                    # disponible
                     skip_compression = False
                     try:
                         # Tester si FFmpeg est disponible
-                        subprocess.run(["ffmpeg", "-version"], 
-                                     capture_output=True, timeout=5)
+                        subprocess.run(
+                            ["ffmpeg", "-version"], capture_output=True, timeout=5
+                        )
                     except (FileNotFoundError, subprocess.TimeoutExpired):
-                        print("[DEBUG] FFmpeg non disponible, upload direct sans compression")
+                        print(
+                            "[DEBUG] FFmpeg non disponible, upload direct sans "
+                            "compression"
+                        )
                         skip_compression = True
 
                     if skip_compression:
                         # Upload direct sans compression
                         output_path = os.path.join("media", "videos", video_file.name)
                         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-                        
-                        with open(output_path, 'wb') as f:
+
+                        with open(output_path, "wb") as f:
                             for chunk in video_file.chunks():
                                 f.write(chunk)
-                        
+
                         live.video_file = f"videos/{video_file.name}"
                         live.save()
                         print(f"[DEBUG] Live sauvegardé sans compression: {live.id}")
@@ -188,12 +193,17 @@ def create_live(request):
                             return JsonResponse(
                                 {
                                     "success": True,
-                                    "message": "Vidéo uploadée avec succès ! (sans compression)",
+                                    "message": (
+                                        "Video uploadée ! (sans compression)"
+                                    ),
                                     "redirect_url": reverse("dashboard"),
                                 }
                             )
 
-                        messages.success(request, "Vidéo uploadée avec succès ! (sans compression)")
+                        messages.success(
+                            request,
+                            "Vidéo uploadée avec succès ! (sans compression)"
+                        )
                         return redirect("dashboard")
 
                     # Créer un fichier temporaire pour la vidéo compressée
