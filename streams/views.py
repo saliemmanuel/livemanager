@@ -351,11 +351,11 @@ def start_live(request, live_id):
     print(f"[DEBUG] can_start: {live.can_start}")
 
     if not live.can_start:
-        print(f"[DEBUG] Live ne peut pas être démarré")
+        print("[DEBUG] Live ne peut pas être démarré")
         return JsonResponse({"success": False, "message": "Live non démarré"})
 
     if not live.stream_key:
-        print(f"[DEBUG] Clé de streaming manquante")
+        print("[DEBUG] Clé de streaming manquante")
         return JsonResponse({"success": False, "message": "Clé de streaming manquante"})
 
     try:
