@@ -54,16 +54,22 @@ def logout_view(request):
 @login_required
 def dashboard(request):
     """Dashboard utilisateur."""
+    lives = Live.objects.filter(user=request.user).order_by("-created_at")
+    
+    context = {
+        "lives": lives,
+        "is_approved": request.user.is_approved,
+        "user_lives": lives,  # Pour compatibilité avec le template
+    }
+    
     if not request.user.is_approved:
         messages.warning(
             request,
             "Votre compte n'est pas encore approuvé. "
             "Un administrateur vous activera bientôt.",
         )
-        return render(request, "streams/dashboard.html")
-
-    lives = Live.objects.filter(user=request.user).order_by("-created_at")
-    return render(request, "streams/dashboard.html", {"lives": lives})
+    
+    return render(request, "streams/dashboard.html", context)
 
 
 @login_required
@@ -505,6 +511,15 @@ def stop_live(request, live_id):
         )
 
 
+@login_required
+def check_approval_status(request):
+    """Vérifier le statut d'approbation de l'utilisateur (AJAX)."""
+    return JsonResponse({
+        "is_approved": request.user.is_approved,
+        "username": request.user.username
+    })
+
+
 @user_passes_test(is_admin)
 def admin_dashboard(request):
     """Dashboard administrateur."""
@@ -535,6 +550,13 @@ def approve_user(request, user_id):
     user = get_object_or_404(User, id=user_id)
     user.is_approved = True
     user.save()
+    
+    # Forcer la mise à jour de la session si l'utilisateur est connecté
+    if user.is_authenticated:
+        # Mettre à jour la session de l'utilisateur
+        from django.contrib.auth import update_session_auth_hash
+        update_session_auth_hash(request, user)
+    
     messages.success(request, f"Utilisateur {user.username} approuvé avec succès !")
     return redirect("admin_users")
 
