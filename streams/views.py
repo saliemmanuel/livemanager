@@ -75,61 +75,82 @@ def create_live(request):
             try:
                 live = form.save(commit=False)
                 live.user = request.user
-                
+
                 # Traitement de la vidéo uploadée
-                if 'video_file' in request.FILES:
-                    video_file = request.FILES['video_file']
-                    
+                if "video_file" in request.FILES:
+                    video_file = request.FILES["video_file"]
+
                     # Créer un fichier temporaire pour la vidéo compressée
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_file:
+                    with tempfile.NamedTemporaryFile(
+                        delete=False, suffix=".mp4"
+                    ) as temp_file:
                         # Sauvegarder le fichier uploadé
                         for chunk in video_file.chunks():
                             temp_file.write(chunk)
                         temp_file_path = temp_file.name
-                    
+
                     try:
                         # Décompresser la vidéo avec FFmpeg
-                        output_path = os.path.join('media', 'videos', f'decompressed_{video_file.name}')
+                        output_path = os.path.join(
+                            "media", "videos", f"decompressed_{video_file.name}"
+                        )
                         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-                        
+
                         # Commande FFmpeg pour décompresser et optimiser
                         ffmpeg_cmd = [
-                            'ffmpeg', '-i', temp_file_path,
-                            '-c:v', 'libx264',  # Codec vidéo H.264
-                            '-c:a', 'aac',      # Codec audio AAC
-                            '-preset', 'medium', # Équilibre qualité/performance
-                            '-crf', '23',       # Qualité constante (18-28 recommandé)
-                            '-movflags', '+faststart', # Optimisation web
-                            '-y',               # Écraser si existe
-                            output_path
+                            "ffmpeg",
+                            "-i",
+                            temp_file_path,
+                            "-c:v",
+                            "libx264",  # Codec vidéo H.264
+                            "-c:a",
+                            "aac",  # Codec audio AAC
+                            "-preset",
+                            "medium",  # Équilibre qualité/performance
+                            "-crf",
+                            "23",  # Qualité constante (18-28 recommandé)
+                            "-movflags",
+                            "+faststart",  # Optimisation web
+                            "-y",  # Écraser si existe
+                            output_path,
                         ]
-                        
+
                         # Exécuter FFmpeg
                         result = subprocess.run(
                             ffmpeg_cmd,
                             capture_output=True,
                             text=True,
-                            timeout=300  # 5 minutes max
+                            timeout=300,  # 5 minutes max
                         )
-                        
+
                         if result.returncode == 0:
                             # Sauvegarder le chemin de la vidéo décompressée
-                            live.video_file = f'videos/decompressed_{video_file.name}'
+                            live.video_file = f"videos/decompressed_{video_file.name}"
                             live.save()
-                            
+
                             # Réponse JSON pour les uploads AJAX
-                            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                                return JsonResponse({
-                                    "success": True,
-                                    "message": "Vidéo compressée et live créé avec succès !",
-                                    "redirect_url": reverse("dashboard"),
-                                })
-                            
-                            messages.success(request, "Vidéo compressée et live créé avec succès !")
+                            if (
+                                request.headers.get("X-Requested-With")
+                                == "XMLHttpRequest"
+                            ):
+                                return JsonResponse(
+                                    {
+                                        "success": True,
+                                        "message": (
+                                            "Vidéo compressée et live créé "
+                                            "avec succès !"
+                                        ),
+                                        "redirect_url": reverse("dashboard"),
+                                    }
+                                )
+
+                            messages.success(
+                                request, "Vidéo compressée et live créé avec succès !"
+                            )
                             return redirect("dashboard")
                         else:
                             raise Exception(f"Erreur FFmpeg: {result.stderr}")
-                            
+
                     finally:
                         # Nettoyer le fichier temporaire
                         if os.path.exists(temp_file_path):
@@ -137,32 +158,40 @@ def create_live(request):
                 else:
                     # Pas de fichier vidéo, sauvegarder normalement
                     live.save()
-                    
+
                     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                        return JsonResponse({
-                            "success": True,
-                            "message": "Live créé avec succès !",
-                            "redirect_url": reverse("dashboard"),
-                        })
-                    
+                        return JsonResponse(
+                            {
+                                "success": True,
+                                "message": "Live créé avec succès !",
+                                "redirect_url": reverse("dashboard"),
+                            }
+                        )
+
                     messages.success(request, "Live créé avec succès !")
                     return redirect("dashboard")
-                    
+
             except Exception as e:
                 if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                    return JsonResponse({
-                        "success": False,
-                        "message": f"Erreur lors de la création: {str(e)}",
-                    }, status=400)
+                    return JsonResponse(
+                        {
+                            "success": False,
+                            "message": f"Erreur lors de la création: {str(e)}",
+                        },
+                        status=400,
+                    )
                 else:
                     messages.error(request, f"Erreur lors de la création: {str(e)}")
         else:
             if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                return JsonResponse({
-                    "success": False,
-                    "message": "Données invalides",
-                    "errors": form.errors,
-                }, status=400)
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "message": "Données invalides",
+                        "errors": form.errors,
+                    },
+                    status=400,
+                )
     else:
         form = LiveForm()
 
