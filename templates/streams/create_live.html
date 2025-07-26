@@ -386,21 +386,67 @@ function generateFileId(file) {
     ).replace(/[^a-zA-Z0-9]/g, '');
 }
 
-async function uploadFileInChunks(file, onProgress, onDone, onError) {
+// Ajout pour la reprise d'upload
+function saveUploadState(state) {
+    localStorage.setItem('livemanager_upload_state', JSON.stringify(state));
+}
+function loadUploadState() {
+    const s = localStorage.getItem('livemanager_upload_state');
+    return s ? JSON.parse(s) : null;
+}
+function clearUploadState() {
+    localStorage.removeItem('livemanager_upload_state');
+}
+
+async function getUploadedChunksFromServer(fileId) {
+    const formData = new FormData();
+    formData.append('file_id', fileId);
+    const response = await fetch('/upload-chunk-status/', {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return data.chunks || [];
+}
+
+async function uploadFileInChunks(file, onProgress, onDone, onError, resumeState) {
     if (file.size > MAX_SIZE) {
         alert('Le fichier est trop volumineux. Taille maximum: 1 Go');
         return;
     }
-    fileId = generateFileId(file);
+    fileId = resumeState?.fileId || generateFileId(file);
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-    let currentChunk = 0;
-    let uploadedBytes = 0;
+    let currentChunk = resumeState?.currentChunk || 0;
+    let uploadedBytes = currentChunk * CHUNK_SIZE;
     let retryCount = 0;
     const maxRetries = 5;
-
+    let alreadyUploaded = resumeState?.alreadyUploaded || [];
+    if (!alreadyUploaded.length) {
+        alreadyUploaded = await getUploadedChunksFromServer(fileId);
+    }
+    // Sauter les chunks déjà uploadés
+    while (alreadyUploaded.includes(currentChunk) && currentChunk < totalChunks) {
+        currentChunk++;
+        uploadedBytes = currentChunk * CHUNK_SIZE;
+    }
     async function sendChunk() {
         if (currentChunk >= totalChunks) {
+            clearUploadState();
             onDone();
+            return;
+        }
+        if (alreadyUploaded.includes(currentChunk)) {
+            // Chunk déjà uploadé, passer au suivant
+            currentChunk++;
+            uploadedBytes = currentChunk * CHUNK_SIZE;
+            saveUploadState({fileId, fileName: file.name, fileSize: file.size, currentChunk, totalChunks, alreadyUploaded});
+            onProgress(uploadedBytes, file.size, currentChunk + 1, totalChunks);
+            sendChunk();
             return;
         }
         const start = currentChunk * CHUNK_SIZE;
@@ -412,7 +458,6 @@ async function uploadFileInChunks(file, onProgress, onDone, onError) {
         formData.append('total_chunks', totalChunks);
         formData.append('file_id', fileId);
         formData.append('file_name', file.name);
-        // Ajout des autres champs du formulaire
         formData.append('title', document.getElementById('id_title').value);
         const scheduledAt = document.getElementById('id_scheduled_at')?.value;
         if (scheduledAt) {
@@ -429,6 +474,8 @@ async function uploadFileInChunks(file, onProgress, onDone, onError) {
             });
             if (!response.ok) throw new Error(await response.text());
             uploadedBytes = end;
+            alreadyUploaded.push(currentChunk);
+            saveUploadState({fileId, fileName: file.name, fileSize: file.size, currentChunk: currentChunk+1, totalChunks, alreadyUploaded});
             onProgress(uploadedBytes, file.size, currentChunk + 1, totalChunks);
             currentChunk++;
             retryCount = 0;
@@ -442,8 +489,58 @@ async function uploadFileInChunks(file, onProgress, onDone, onError) {
             }
         }
     }
+    saveUploadState({fileId, fileName: file.name, fileSize: file.size, currentChunk, totalChunks, alreadyUploaded});
     sendChunk();
 }
+
+// Proposer la reprise si un upload est en cours
+window.addEventListener('DOMContentLoaded', function() {
+    const state = loadUploadState();
+    if (state && state.fileName && state.currentChunk < state.totalChunks) {
+        if (confirm('Un upload interrompu a été détecté pour ' + state.fileName + '. Voulez-vous reprendre ?')) {
+            // Demander à l'utilisateur de sélectionner à nouveau le fichier
+            document.getElementById('id_video_file').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file && file.name === state.fileName && file.size === state.fileSize) {
+                    // Afficher la barre de progression
+                    uploadProgress.classList.remove('hidden');
+                    submitBtn.disabled = true;
+                    submitText.classList.add('hidden');
+                    submitLoading.classList.remove('hidden');
+                    uploadStartTime = Date.now();
+                    startProgressTracking();
+                    uploadFileInChunks(
+                        file,
+                        function (uploaded, total, chunkNum, totalChunks) {
+                            const percent = (uploaded / total) * 100;
+                            progressBar.style.width = percent + '%';
+                            uploadPercentage.textContent = Math.round(percent) + '%';
+                            uploadSpeed.textContent = formatFileSize(uploaded / ((Date.now() - uploadStartTime) / 1000)) + '/s';
+                            uploadTime.textContent = 'Chunk ' + chunkNum + '/' + totalChunks;
+                        },
+                        function () {
+                            stopProgressTracking();
+                            clearUploadState();
+                            window.location.href = '{% url "dashboard" %}';
+                        },
+                        function (err) {
+                            stopProgressTracking();
+                            alert(err);
+                            resetForm();
+                        },
+                        state
+                    );
+                } else {
+                    alert('Le fichier sélectionné ne correspond pas à l\'upload interrompu.');
+                    clearUploadState();
+                }
+            }, {once:true});
+            alert('Veuillez sélectionner à nouveau le fichier ' + state.fileName + ' pour reprendre l\'upload.');
+        } else {
+            clearUploadState();
+        }
+    }
+});
 
 // Remplacer la soumission du formulaire
 liveForm.addEventListener('submit', function(e) {
@@ -471,6 +568,7 @@ liveForm.addEventListener('submit', function(e) {
         },
         function () {
             stopProgressTracking();
+            clearUploadState();
             window.location.href = '{% url "dashboard" %}';
         },
         function (err) {
