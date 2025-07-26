@@ -86,6 +86,8 @@ class LiveForm(forms.ModelForm):
                 user=self.user, is_active=True
             )
             self.fields["stream_key"].widget.attrs.update({"class": "form-select"})
+            # Rendre le champ optionnel
+            self.fields["stream_key"].required = False
 
         self.fields["video_file"].widget.attrs.update({"class": "form-input"})
         self.fields["is_scheduled"].widget.attrs.update({"class": "form-checkbox"})
@@ -94,11 +96,22 @@ class LiveForm(forms.ModelForm):
         cleaned_data = super().clean()
         is_scheduled = cleaned_data.get("is_scheduled")
         scheduled_at = cleaned_data.get("scheduled_at")
+        stream_key = cleaned_data.get("stream_key")
 
         if is_scheduled and not scheduled_at:
             raise forms.ValidationError(
                 "La date et heure de programmation sont requises pour "
                 "une diffusion programmée."
             )
+
+        # Vérifier si l'utilisateur a des clés de streaming configurées
+        if self.user and not stream_key:
+            user_keys = StreamKey.objects.filter(user=self.user, is_active=True)
+            if not user_keys.exists():
+                raise forms.ValidationError(
+                    "Vous devez d'abord configurer au moins une clé de streaming "
+                    "dans votre profil avant de créer un live. "
+                    "Allez dans votre profil pour ajouter une clé."
+                )
 
         return cleaned_data

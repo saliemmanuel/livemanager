@@ -26,7 +26,35 @@
                     {% endif %}
                 </div>
 
-                <!-- Fichier Vidéo avec Compression -->
+                <!-- Clé de streaming -->
+                <div>
+                    <label for="id_stream_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Clé de diffusion
+                        <a href="{% url 'profile' %}" class="text-primary-600 dark:text-primary-400 hover:underline text-xs ml-2">
+                            (Configurer dans mon profil)
+                        </a>
+                    </label>
+                    <select name="stream_key" id="id_stream_key" required
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white">
+                        <option value="">Sélectionnez une clé de streaming</option>
+                        {% for choice in form.stream_key.field.queryset %}
+                            <option value="{{ choice.id }}" {% if form.stream_key.value == choice.id %}selected{% endif %}>
+                                {{ choice.name }} ({{ choice.platform }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if form.stream_key.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.stream_key.errors.0 }}</p>
+                    {% endif %}
+                    {% if not form.stream_key.field.queryset %}
+                        <p class="mt-1 text-sm text-orange-600 dark:text-orange-400">
+                            ⚠️ Aucune clé de streaming configurée. 
+                            <a href="{% url 'profile' %}" class="underline">Allez dans votre profil pour en ajouter une.</a>
+                        </p>
+                    {% endif %}
+                </div>
+
+                <!-- Fichier Vidéo -->
                 <div>
                     <label for="id_video_file" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fichier Vidéo (MP4)</label>
                     
@@ -39,35 +67,11 @@
                             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
                                 <span class="font-medium text-primary-600 dark:text-primary-400">Cliquez pour sélectionner</span> ou glissez-déposez
                             </p>
-                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">MP4 jusqu'à 1GB - Upload rapide via SCP disponible</p>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">MP4 jusqu'à 1GB</p>
                         </div>
                         
                         <input type="file" name="video_file" id="id_video_file" accept="video/mp4,video/*" required
                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                    </div>
-
-                    <!-- Options d'upload -->
-                    <div class="mt-4 flex space-x-4">
-                        <button type="button" id="uploadViaWebBtn" class="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors">
-                            📤 Upload via navigateur
-                        </button>
-                        <button type="button" id="uploadViaScpBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
-                            🚀 Upload rapide via SCP
-                        </button>
-                    </div>
-
-                    <!-- Instructions SCP -->
-                    <div id="scpInstructions" class="hidden mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <h4 class="font-medium text-blue-900 dark:text-blue-100 mb-2">📁 Upload via SCP</h4>
-                        <div id="scpContent" class="text-sm text-blue-800 dark:text-blue-200"></div>
-                        <div class="mt-3 flex space-x-2">
-                            <button type="button" id="copyScpBtn" class="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">
-                                📋 Copier la commande
-                            </button>
-                            <button type="button" id="checkFileBtn" class="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700">
-                                ✅ Vérifier le fichier
-                            </button>
-                        </div>
                     </div>
 
                     <!-- Informations de compression -->
@@ -107,7 +111,7 @@
                         </div>
                         <div class="flex items-center justify-between mt-2">
                             <span id="uploadSpeed" class="text-xs text-gray-500 dark:text-gray-400">0 KB/s</span>
-                            <span id="uploadTime" class="text-xs text-gray-500 dark:text-gray-400">Temps restant: --</span>
+                            <span id="uploadTimeRemaining" class="text-xs text-gray-500 dark:text-gray-400">Temps restant: --</span>
                         </div>
                     </div>
 
@@ -140,15 +144,15 @@
                 <!-- Bouton de soumission -->
                 <div class="flex justify-end">
                     <button type="submit" id="submitBtn" 
-                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
                         <span id="submitText">Créer le Live</span>
-                        <div id="submitLoading" class="hidden">
+                        <span id="submitLoading" class="hidden">
                             <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                             Traitement...
-                        </div>
+                        </span>
                     </button>
                 </div>
             </form>
@@ -156,350 +160,106 @@
     </div>
 </div>
 
-<!-- FFmpeg.wasm pour la compression côté client -->
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.7/dist/ffmpeg.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const liveForm = document.getElementById('liveForm');
-    const fileInput = document.getElementById('id_video_file');
-    const dropZone = document.getElementById('dropZone');
-    const dropZoneContent = document.getElementById('dropZoneContent');
-    const compressionInfo = document.getElementById('compressionInfo');
-    const compressionProgress = document.getElementById('compressionProgress');
-    const compressionBar = document.getElementById('compressionBar');
-    const compressionPercentage = document.getElementById('compressionPercentage');
-    const compressionStatus = document.getElementById('compressionStatus');
-    const compressionTime = document.getElementById('compressionTime');
-    const uploadProgress = document.getElementById('uploadProgress');
-    const progressBar = document.getElementById('progressBar');
-    const uploadPercentage = document.getElementById('uploadPercentage');
-    const uploadSpeed = document.getElementById('uploadSpeed');
-    const uploadTime = document.getElementById('uploadTime');
-    const fileInfo = document.getElementById('fileInfo');
-    const fileName = document.getElementById('fileName');
-    const fileSize = document.getElementById('fileSize');
-    const compressionRatio = document.getElementById('compressionRatio');
-    const submitBtn = document.getElementById('submitBtn');
-    const submitText = document.getElementById('submitText');
-    const submitLoading = document.getElementById('submitLoading');
+// Variables globales
+let originalFile = null;
+let compressedFile = null;
+let uploadStartTime = null;
 
-    let originalFile = null;
-    let compressedFile = null;
-    let uploadStartTime = null;
-    let uploadMode = 'web'; // 'web' ou 'scp'
+// Éléments DOM
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('id_video_file');
+const dropZoneContent = document.getElementById('dropZoneContent');
+const compressionInfo = document.getElementById('compressionInfo');
+const compressionProgress = document.getElementById('compressionProgress');
+const compressionBar = document.getElementById('compressionBar');
+const compressionPercentage = document.getElementById('compressionPercentage');
+const compressionStatus = document.getElementById('compressionStatus');
+const compressionTime = document.getElementById('compressionTime');
+const uploadProgress = document.getElementById('uploadProgress');
+const progressBar = document.getElementById('progressBar');
+const uploadPercentage = document.getElementById('uploadPercentage');
+const uploadSpeed = document.getElementById('uploadSpeed');
+const uploadTimeRemaining = document.getElementById('uploadTimeRemaining');
+const liveForm = document.getElementById('liveForm');
+const submitBtn = document.getElementById('submitBtn');
+const submitText = document.getElementById('submitText');
+const submitLoading = document.getElementById('submitLoading');
 
-    // Variables pour le suivi de la compression
-    let compressionStartTime = null;
-    let compressionInterval = null;
+// Gestion du drag & drop
+dropZone.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    dropZone.classList.add('border-primary-500', 'bg-primary-50', 'dark:bg-primary-900/20');
+});
 
-    // Initialiser FFmpeg
-    let ffmpeg = null;
-    let ffmpegLoaded = false;
+dropZone.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    dropZone.classList.remove('border-primary-500', 'bg-primary-50', 'dark:bg-primary-900/20');
+});
 
-    // Gestion des modes d'upload
-    document.getElementById('uploadViaWebBtn').addEventListener('click', function() {
-        uploadMode = 'web';
-        document.getElementById('uploadViaWebBtn').classList.add('bg-primary-700');
-        document.getElementById('uploadViaScpBtn').classList.remove('bg-green-700');
-        document.getElementById('uploadViaScpBtn').classList.add('bg-green-600');
-        document.getElementById('scpInstructions').classList.add('hidden');
-    });
-
-    document.getElementById('uploadViaScpBtn').addEventListener('click', function() {
-        uploadMode = 'scp';
-        document.getElementById('uploadViaScpBtn').classList.add('bg-green-700');
-        document.getElementById('uploadViaWebBtn').classList.remove('bg-primary-700');
-        document.getElementById('uploadViaWebBtn').classList.add('bg-primary-600');
-        
-        if (originalFile) {
-            generateScpInstructions(originalFile);
-        } else {
-            alert('Veuillez d\'abord sélectionner un fichier vidéo.');
-        }
-    });
-
-    // Générer les instructions SCP
-    async function generateScpInstructions(file) {
-        const formData = new FormData();
-        formData.append('file_name', file.name);
-        
-        try {
-            const response = await fetch('/upload-via-scp/', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                }
-            });
-            
-            const data = await response.json();
-            if (data.success) {
-                document.getElementById('scpContent').innerHTML = data.instructions.replace(/\n/g, '<br>');
-                document.getElementById('scpInstructions').classList.remove('hidden');
-                
-                // Stocker la commande SCP pour la copie
-                window.scpCommand = data.scp_command;
-            } else {
-                alert('Erreur lors de la génération des instructions SCP: ' + data.message);
-            }
-        } catch (error) {
-            alert('Erreur de connexion: ' + error);
-        }
+dropZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dropZone.classList.remove('border-primary-500', 'bg-primary-50', 'dark:bg-primary-900/20');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        handleFileSelect(files[0]);
     }
+});
 
-    // Copier la commande SCP
-    document.getElementById('copyScpBtn').addEventListener('click', function() {
-        if (window.scpCommand) {
-            navigator.clipboard.writeText(window.scpCommand).then(function() {
-                alert('Commande SCP copiée dans le presse-papiers !');
-            }).catch(function() {
-                // Fallback pour les navigateurs qui ne supportent pas clipboard API
-                const textArea = document.createElement('textarea');
-                textArea.value = window.scpCommand;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                alert('Commande SCP copiée dans le presse-papiers !');
-            });
-        }
-    });
-
-    // Vérifier la présence du fichier
-    document.getElementById('checkFileBtn').addEventListener('click', async function() {
-        if (!originalFile) {
-            alert('Aucun fichier sélectionné.');
-            return;
-        }
-        
-        const formData = new FormData();
-        formData.append('file_name', originalFile.name);
-        
-        try {
-            const response = await fetch('/check-file-exists/', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                }
-            });
-            
-            const data = await response.json();
-            if (data.success && data.exists) {
-                alert(`✅ Fichier trouvé ! Taille: ${formatFileSize(data.file_size)}`);
-                // Le fichier est prêt, on peut continuer
-                document.getElementById('scpInstructions').classList.add('hidden');
-            } else {
-                alert('❌ Fichier non trouvé. Vérifiez que l\'upload SCP s\'est bien terminé.');
-            }
-        } catch (error) {
-            alert('Erreur de connexion: ' + error);
-        }
-    });
-
-    async function loadFFmpeg() {
-        try {
-            ffmpeg = createFFmpeg({ 
-                log: true,
-                corePath: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.js'
-            });
-            await ffmpeg.load();
-            ffmpegLoaded = true;
-            console.log('FFmpeg.wasm chargé avec succès');
-        } catch (error) {
-            console.error('Erreur lors du chargement de FFmpeg:', error);
-            ffmpegLoaded = false;
-        }
+// Gestion de la sélection de fichier
+fileInput.addEventListener('change', function(e) {
+    if (e.target.files.length > 0) {
+        handleFileSelect(e.target.files[0]);
     }
+});
 
-    // Charger FFmpeg au démarrage
-    loadFFmpeg();
+function handleFileSelect(file) {
+    originalFile = file;
+    
+    // Mettre à jour l'interface
+    dropZoneContent.innerHTML = `
+        <svg class="mx-auto h-12 w-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            <span class="font-medium text-green-600 dark:text-green-400">Fichier sélectionné</span>
+        </p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">${file.name} (${formatFileSize(file.size)})</p>
+    `;
+    
+    // Afficher les informations de compression
+    compressionInfo.classList.remove('hidden');
+}
 
-    // Fonction de compression vidéo
-    async function compressVideo(file) {
-        if (!ffmpegLoaded) {
-            console.warn('FFmpeg non disponible, upload sans compression');
-            return file;
-        }
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
 
-        try {
-            compressionStartTime = Date.now();
-            compressionProgress.classList.remove('hidden');
-            compressionStatus.textContent = 'Chargement de FFmpeg...';
-
-            // Écrire le fichier dans FFmpeg
-            const inputName = 'input.mp4';
-            const outputName = 'output.mp4';
-            
-            ffmpeg.FS('writeFile', inputName, await file.arrayBuffer());
-            
-            compressionStatus.textContent = 'Compression en cours...';
-            
-            // Commande de compression FFmpeg
-            await ffmpeg.run(
-                '-i', inputName,
-                '-c:v', 'libx264',      // Codec vidéo H.264
-                '-c:a', 'aac',          // Codec audio AAC
-                '-preset', 'medium',     // Équilibre qualité/performance
-                '-crf', '28',           // Qualité constante (plus élevé = plus compressé)
-                '-movflags', '+faststart', // Optimisation web
-                '-y',                   // Écraser si existe
-                outputName
-            );
-
-            // Lire le fichier compressé
-            const compressedData = ffmpeg.FS('readFile', outputName);
-            
-            // Créer un nouveau fichier
-            const compressedBlob = new Blob([compressedData.buffer], { type: 'video/mp4' });
-            const compressedFile = new File([compressedBlob], file.name, { type: 'video/mp4' });
-
-            // Nettoyer les fichiers temporaires
-            ffmpeg.FS('unlink', inputName);
-            ffmpeg.FS('unlink', outputName);
-
-            // Calculer le ratio de compression
-            const originalSize = file.size;
-            const compressedSize = compressedFile.size;
-            const ratio = ((originalSize - compressedSize) / originalSize * 100).toFixed(1);
-
-            // Afficher les informations
-            compressionRatio.textContent = `Compression: ${ratio}% de réduction (${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)})`;
-            
-            return compressedFile;
-
-        } catch (error) {
-            console.error('Erreur lors de la compression:', error);
-            compressionStatus.textContent = 'Erreur de compression, upload du fichier original';
-            return file;
-        } finally {
-            compressionProgress.classList.add('hidden');
-        }
-    }
-
-    // Fonction pour formater la taille des fichiers
-    function formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-
-    // Fonction pour démarrer le suivi de la compression
-    function startCompressionTracking() {
-        compressionInterval = setInterval(() => {
-            if (compressionStartTime) {
-                const elapsed = Date.now() - compressionStartTime;
-                const minutes = Math.floor(elapsed / 60000);
-                const seconds = Math.floor((elapsed % 60000) / 1000);
-                compressionTime.textContent = `Temps écoulé: ${minutes}:${seconds.toString().padStart(2, '0')}`;
-            }
-        }, 1000);
-    }
-
-    // Fonction pour arrêter le suivi de la compression
-    function stopCompressionTracking() {
-        if (compressionInterval) {
-            clearInterval(compressionInterval);
-            compressionInterval = null;
-        }
-    }
-
-    // Fonction pour démarrer le suivi de l'upload
-    function startProgressTracking() {
-        uploadInterval = setInterval(() => {
-            if (uploadStartTime) {
-                const elapsed = Date.now() - uploadStartTime;
-                const minutes = Math.floor(elapsed / 60000);
-                const seconds = Math.floor((elapsed % 60000) / 1000);
-                uploadTime.textContent = `Temps écoulé: ${minutes}:${seconds.toString().padStart(2, '0')}`;
-            }
-        }, 1000);
-    }
-
-    // Fonction pour arrêter le suivi de l'upload
-    function stopProgressTracking() {
-        if (uploadInterval) {
-            clearInterval(uploadInterval);
-            uploadInterval = null;
-        }
-    }
-
-    // Fonction pour réinitialiser le formulaire
-    function resetForm() {
-        uploadProgress.classList.add('hidden');
-        compressionProgress.classList.add('hidden');
-        fileInfo.classList.add('hidden');
-        submitBtn.disabled = false;
-        submitText.classList.remove('hidden');
-        submitLoading.classList.add('hidden');
-        stopProgressTracking();
-        stopCompressionTracking();
-    }
-
-    // Gestion du drag and drop
-    dropZone.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        dropZone.classList.add('border-primary-500', 'dark:border-primary-400');
-    });
-
-    dropZone.addEventListener('dragleave', function(e) {
-        e.preventDefault();
-        dropZone.classList.remove('border-primary-500', 'dark:border-primary-400');
-    });
-
-    dropZone.addEventListener('drop', function(e) {
-        e.preventDefault();
-        dropZone.classList.remove('border-primary-500', 'dark:border-primary-400');
-        
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            fileInput.files = files;
-            handleFileSelect(files[0]);
-        }
-    });
-
-    // Gestion de la sélection de fichier
-    fileInput.addEventListener('change', function(e) {
-        if (e.target.files.length > 0) {
-            handleFileSelect(e.target.files[0]);
-        }
-    });
-
-    function handleFileSelect(file) {
-        originalFile = file;
-        
-        // Vérifications
-        if (!file.type.startsWith('video/')) {
-            alert('Veuillez sélectionner un fichier vidéo.');
-            return;
-        }
-
-        const maxSize = 500 * 1024 * 1024; // 500MB
-        if (file.size > maxSize) {
-            alert('Le fichier est trop volumineux. Taille maximum: 500MB');
-            return;
-        }
-
-        // Afficher les informations du fichier original
-        fileName.textContent = file.name;
-        fileSize.textContent = `Taille originale: ${formatFileSize(file.size)}`;
-        fileInfo.classList.remove('hidden');
-        compressionInfo.classList.remove('hidden');
-
-        // Démarrer la compression
-        startCompressionTracking();
-        compressVideo(file).then(compressed => {
-            compressedFile = compressed;
-            stopCompressionTracking();
-            
-            // Mettre à jour les informations
-            if (compressed !== file) {
-                fileSize.textContent = `Taille originale: ${formatFileSize(file.size)}`;
-            }
-        });
-    }
+function resetForm() {
+    originalFile = null;
+    compressedFile = null;
+    dropZoneContent.innerHTML = `
+        <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            <span class="font-medium text-primary-600 dark:text-primary-400">Cliquez pour sélectionner</span> ou glissez-déposez
+        </p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">MP4 jusqu'à 1GB</p>
+    `;
+    compressionInfo.classList.add('hidden');
+    compressionProgress.classList.add('hidden');
+    uploadProgress.classList.add('hidden');
+    submitBtn.disabled = false;
+    submitText.classList.remove('hidden');
+    submitLoading.classList.add('hidden');
+    fileInput.value = '';
+}
 
 // Nouvelle logique d'upload rapide et robuste
 function uploadFileWithRetry(file, onProgress, onDone, onError, maxRetries = 3) {
@@ -512,6 +272,11 @@ function uploadFileWithRetry(file, onProgress, onDone, onError, maxRetries = 3) 
         if (scheduledAt) {
             formData.append('scheduled_at', scheduledAt);
         }
+        const streamKey = document.getElementById('id_stream_key')?.value;
+        if (streamKey) {
+            formData.append('stream_key', streamKey);
+        }
+        
         const xhr = new XMLHttpRequest();
         xhr.upload.addEventListener('progress', function(e) {
             if (e.lengthComputable) {
@@ -526,9 +291,22 @@ function uploadFileWithRetry(file, onProgress, onDone, onError, maxRetries = 3) 
             }
         });
         xhr.addEventListener('load', function() {
-            stopProgressTracking();
             if (xhr.status === 200) {
-                window.location.href = '{% url "dashboard" %}';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.success) {
+                        window.location.href = response.redirect_url || '{% url "dashboard" %}';
+                    } else {
+                        if (attempt < maxRetries) {
+                            attempt++;
+                            setTimeout(tryUpload, 1000 * attempt);
+                        } else {
+                            onError('Erreur lors de l\'upload: ' + response.message);
+                        }
+                    }
+                } catch (e) {
+                    window.location.href = '{% url "dashboard" %}';
+                }
             } else {
                 if (attempt < maxRetries) {
                     attempt++;
@@ -539,7 +317,6 @@ function uploadFileWithRetry(file, onProgress, onDone, onError, maxRetries = 3) 
             }
         });
         xhr.addEventListener('error', function() {
-            stopProgressTracking();
             if (attempt < maxRetries) {
                 attempt++;
                 setTimeout(tryUpload, 1000 * attempt);
@@ -551,7 +328,6 @@ function uploadFileWithRetry(file, onProgress, onDone, onError, maxRetries = 3) 
         xhr.setRequestHeader('X-CSRFToken', document.querySelector('[name=csrfmiddlewaretoken]').value);
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         uploadStartTime = Date.now();
-        startProgressTracking();
         xhr.send(formData);
     }
     tryUpload();
@@ -561,99 +337,34 @@ function uploadFileWithRetry(file, onProgress, onDone, onError, maxRetries = 3) 
 liveForm.addEventListener('submit', function(e) {
     e.preventDefault();
     
-    if (uploadMode === 'scp') {
-        // Mode SCP : vérifier que le fichier existe avant de créer le live
-        if (!originalFile) {
-            alert('Veuillez sélectionner un fichier vidéo.');
-            return;
-        }
-        
-        // Vérifier la présence du fichier
-        const formData = new FormData();
-        formData.append('file_name', originalFile.name);
-        
-        fetch('/check-file-exists/', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.exists) {
-                // Le fichier existe, créer le live
-                createLiveWithScpFile(originalFile.name);
-            } else {
-                alert('❌ Fichier non trouvé. Vérifiez que l\'upload SCP s\'est bien terminé.');
-            }
-        })
-        .catch(error => {
-            alert('Erreur de vérification: ' + error);
-        });
-    } else {
-        // Mode web : upload AJAX classique
-        const fileToUpload = compressedFile || originalFile;
-        if (!fileToUpload) {
-            alert('Veuillez sélectionner un fichier vidéo.');
-            return;
-        }
-        uploadProgress.classList.remove('hidden');
-        submitBtn.disabled = true;
-        submitText.classList.add('hidden');
-        submitLoading.classList.remove('hidden');
-        uploadFileWithRetry(
-            fileToUpload,
-            function () {},
-            function () {},
-            function (err) {
-                alert(err);
-                resetForm();
-            }
-        );
-    }
-});
-
-// Créer un live avec un fichier uploadé via SCP
-function createLiveWithScpFile(fileName) {
-    const formData = new FormData();
-    formData.append('title', document.getElementById('id_title').value);
-    formData.append('video_file_name', fileName); // Nom du fichier SCP
-    formData.append('upload_method', 'scp');
-    
-    const scheduledAt = document.getElementById('id_scheduled_at')?.value;
-    if (scheduledAt) {
-        formData.append('scheduled_at', scheduledAt);
+    const fileToUpload = compressedFile || originalFile;
+    if (!fileToUpload) {
+        alert('Veuillez sélectionner un fichier vidéo.');
+        return;
     }
     
-    // Afficher la progression
+    // Vérifier que une clé de streaming est sélectionnée
+    const streamKey = document.getElementById('id_stream_key')?.value;
+    if (!streamKey) {
+        alert('Veuillez sélectionner une clé de streaming.');
+        return;
+    }
+    
+    // Afficher la barre de progression
     uploadProgress.classList.remove('hidden');
     submitBtn.disabled = true;
     submitText.classList.add('hidden');
     submitLoading.classList.remove('hidden');
     
-    fetch(window.location.href, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            window.location.href = '{% url "dashboard" %}';
-        } else {
-            alert('Erreur lors de la création du live: ' + data.message);
+    uploadFileWithRetry(
+        fileToUpload,
+        function () {},
+        function () {},
+        function (err) {
+            alert(err);
             resetForm();
         }
-    })
-    .catch(error => {
-        alert('Erreur de connexion: ' + error);
-        resetForm();
-    });
-}
+    );
 });
 </script>
 {% endblock %} 
