@@ -1,0 +1,199 @@
+/* Styles pour la barre de progression d'upload */
+
+.upload-progress-container {
+    position: relative;
+    margin: 1rem 0;
+}
+
+.progress-bar {
+    position: relative;
+    height: 8px;
+    background: linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 100%);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background-image: linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, 0.2) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.2) 50%,
+        rgba(255, 255, 255, 0.2) 75%,
+        transparent 75%,
+        transparent
+    );
+    background-size: 50px 50px;
+    animation: move 2s linear infinite;
+}
+
+@keyframes move {
+    0% {
+        background-position: 0 0;
+    }
+    100% {
+        background-position: 50px 50px;
+    }
+}
+
+/* Dark mode */
+.dark .progress-bar {
+    background: linear-gradient(90deg, #374151 0%, #4b5563 100%);
+}
+
+.dark .progress-fill {
+    background: linear-gradient(90deg, #60a5fa 0%, #3b82f6 100%);
+}
+
+/* Zone de drop */
+.drop-zone {
+    transition: all 0.3s ease;
+    border: 2px dashed #d1d5db;
+}
+
+.drop-zone:hover {
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.05);
+}
+
+.drop-zone.dragover {
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.1);
+    transform: scale(1.02);
+}
+
+.dark .drop-zone {
+    border-color: #4b5563;
+}
+
+.dark .drop-zone:hover {
+    border-color: #60a5fa;
+    background-color: rgba(96, 165, 250, 0.1);
+}
+
+.dark .drop-zone.dragover {
+    border-color: #60a5fa;
+    background-color: rgba(96, 165, 250, 0.15);
+}
+
+/* Animation de pulsation pour le bouton de soumission */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+.submit-loading {
+    animation: pulse 2s infinite;
+}
+
+/* Indicateur de fichier sélectionné */
+.file-selected {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.file-selected-icon {
+    animation: bounce 0.6s ease-in-out;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+/* Statistiques d'upload */
+.upload-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.dark .upload-stats {
+    color: #9ca3af;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .upload-stats {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .drop-zone {
+        padding: 1rem;
+    }
+    
+    .drop-zone svg {
+        width: 2rem;
+        height: 2rem;
+    }
+}
+
+/* Animation de succès */
+.success-animation {
+    animation: successPulse 0.6s ease-in-out;
+}
+
+@keyframes successPulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Barre de progression avec gradient animé */
+.progress-fill.animated {
+    background: linear-gradient(90deg, #3b82f6, #1d4ed8, #3b82f6);
+    background-size: 200% 100%;
+    animation: gradientMove 2s linear infinite;
+}
+
+@keyframes gradientMove {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+} 

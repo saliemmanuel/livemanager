@@ -10,7 +10,7 @@
     </div>
 
     <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-        <form method="post" enctype="multipart/form-data" class="space-y-6">
+        <form method="post" enctype="multipart/form-data" class="space-y-6" id="liveForm">
             {% csrf_token %}
             
             <div>
@@ -25,12 +25,52 @@
 
             <div>
                 <label for="id_video_file" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fichier Vidéo (MP4)</label>
-                <input type="file" name="video_file" id="id_video_file" accept="video/mp4" required
-                       class="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary-600 file:text-white hover:file:bg-primary-700">
+                
+                <!-- Zone de drop pour les fichiers -->
+                <div id="dropZone" class="relative border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer">
+                    <div id="dropZoneContent">
+                        <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                            <span class="font-medium text-primary-600 dark:text-primary-400">Cliquez pour sélectionner</span> ou glissez-déposez
+                        </p>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">MP4 jusqu'à 500MB</p>
+                    </div>
+                    
+                    <input type="file" name="video_file" id="id_video_file" accept="video/mp4" required
+                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                </div>
+
+                <!-- Barre de progression -->
+                <div id="uploadProgress" class="hidden mt-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Upload en cours...</span>
+                        <span id="uploadPercentage" class="text-sm text-gray-500 dark:text-gray-400">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div id="progressBar" class="bg-primary-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="flex items-center justify-between mt-2">
+                        <span id="uploadSpeed" class="text-xs text-gray-500 dark:text-gray-400">0 KB/s</span>
+                        <span id="uploadTime" class="text-xs text-gray-500 dark:text-gray-400">Temps restant: --</span>
+                    </div>
+                </div>
+
+                <!-- Informations du fichier -->
+                <div id="fileInfo" class="hidden mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div class="flex items-center">
+                        <svg class="h-5 w-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                        <span id="fileName" class="text-sm font-medium text-gray-700 dark:text-gray-300"></span>
+                    </div>
+                    <p id="fileSize" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
+                </div>
+
                 {% if form.video_file.errors %}
                     <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.video_file.errors.0 }}</p>
                 {% endif %}
-                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Format MP4 recommandé, taille max: 500MB</p>
             </div>
 
             <div>
@@ -70,9 +110,16 @@
             {% endif %}
 
             <div class="flex space-x-4">
-                <button type="submit" 
-                        class="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
-                    Créer le Live
+                <button type="submit" id="submitBtn"
+                        class="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span id="submitText">Créer le Live</span>
+                    <span id="submitLoading" class="hidden">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Upload en cours...
+                    </span>
                 </button>
                 <a href="{% url 'dashboard' %}" 
                    class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium text-center transition-colors">
@@ -84,6 +131,204 @@
 </div>
 
 <script>
+// Variables globales
+let uploadStartTime = 0;
+let uploadInterval = null;
+
+// Éléments DOM
+const dropZone = document.getElementById('dropZone');
+const dropZoneContent = document.getElementById('dropZoneContent');
+const fileInput = document.getElementById('id_video_file');
+const uploadProgress = document.getElementById('uploadProgress');
+const progressBar = document.getElementById('progressBar');
+const uploadPercentage = document.getElementById('uploadPercentage');
+const uploadSpeed = document.getElementById('uploadSpeed');
+const uploadTime = document.getElementById('uploadTime');
+const fileInfo = document.getElementById('fileInfo');
+const fileName = document.getElementById('fileName');
+const fileSize = document.getElementById('fileSize');
+const submitBtn = document.getElementById('submitBtn');
+const submitText = document.getElementById('submitText');
+const submitLoading = document.getElementById('submitLoading');
+const liveForm = document.getElementById('liveForm');
+
+// Gestion du drag & drop
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('border-primary-500', 'dark:border-primary-400');
+    dropZone.classList.remove('border-gray-300', 'dark:border-gray-600');
+});
+
+dropZone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('border-primary-500', 'dark:border-primary-400');
+    dropZone.classList.add('border-gray-300', 'dark:border-gray-600');
+});
+
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('border-primary-500', 'dark:border-primary-400');
+    dropZone.classList.add('border-gray-300', 'dark:border-gray-600');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        fileInput.files = files;
+        handleFileSelect(files[0]);
+    }
+});
+
+// Gestion de la sélection de fichier
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        handleFileSelect(e.target.files[0]);
+    }
+});
+
+// Gestion de la sélection de fichier
+function handleFileSelect(file) {
+    // Vérifier le type de fichier
+    if (!file.type.startsWith('video/')) {
+        alert('Veuillez sélectionner un fichier vidéo.');
+        return;
+    }
+
+    // Vérifier la taille (500MB max)
+    const maxSize = 500 * 1024 * 1024; // 500MB
+    if (file.size > maxSize) {
+        alert('Le fichier est trop volumineux. Taille maximum: 500MB');
+        return;
+    }
+
+    // Afficher les informations du fichier
+    fileName.textContent = file.name;
+    fileSize.textContent = formatFileSize(file.size);
+    fileInfo.classList.remove('hidden');
+
+    // Mettre à jour la zone de drop
+    dropZoneContent.innerHTML = `
+        <svg class="mx-auto h-12 w-12 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+        </svg>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            <span class="font-medium text-green-600 dark:text-green-400">Fichier sélectionné</span>
+        </p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">${file.name}</p>
+    `;
+}
+
+// Formatage de la taille de fichier
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Gestion de la soumission du formulaire
+liveForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('Veuillez sélectionner un fichier vidéo.');
+        return;
+    }
+
+    // Afficher la barre de progression
+    uploadProgress.classList.remove('hidden');
+    submitBtn.disabled = true;
+    submitText.classList.add('hidden');
+    submitLoading.classList.remove('hidden');
+
+    // Démarrer le suivi de l'upload
+    uploadStartTime = Date.now();
+    startProgressTracking();
+
+    // Envoyer le formulaire avec XMLHttpRequest pour suivre la progression
+    const xhr = new XMLHttpRequest();
+    
+    xhr.upload.addEventListener('progress', function(e) {
+        if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            updateProgress(percentComplete, e.loaded, e.total);
+        }
+    });
+
+    xhr.addEventListener('load', function() {
+        if (xhr.status === 200) {
+            // Succès - rediriger vers le dashboard
+            window.location.href = '{% url "dashboard" %}';
+        } else {
+            // Erreur
+            alert('Erreur lors de l\'upload: ' + xhr.responseText);
+            resetForm();
+        }
+    });
+
+    xhr.addEventListener('error', function() {
+        alert('Erreur de connexion lors de l\'upload.');
+        resetForm();
+    });
+
+    xhr.open('POST', window.location.href);
+    xhr.setRequestHeader('X-CSRFToken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    xhr.send(formData);
+});
+
+// Mise à jour de la barre de progression
+function updateProgress(percent, loaded, total) {
+    progressBar.style.width = percent + '%';
+    uploadPercentage.textContent = Math.round(percent) + '%';
+    
+    // Calculer la vitesse
+    const elapsed = (Date.now() - uploadStartTime) / 1000;
+    const speed = loaded / elapsed;
+    uploadSpeed.textContent = formatFileSize(speed) + '/s';
+    
+    // Calculer le temps restant
+    if (percent > 0) {
+        const remaining = (total - loaded) / speed;
+        uploadTime.textContent = 'Temps restant: ' + formatTime(remaining);
+    }
+}
+
+// Démarrage du suivi de progression
+function startProgressTracking() {
+    uploadInterval = setInterval(() => {
+        // Mise à jour en temps réel
+    }, 100);
+}
+
+// Formatage du temps
+function formatTime(seconds) {
+    if (seconds < 60) {
+        return Math.round(seconds) + 's';
+    } else if (seconds < 3600) {
+        return Math.round(seconds / 60) + 'm';
+    } else {
+        return Math.round(seconds / 3600) + 'h';
+    }
+}
+
+// Réinitialisation du formulaire
+function resetForm() {
+    uploadProgress.classList.add('hidden');
+    submitBtn.disabled = false;
+    submitText.classList.remove('hidden');
+    submitLoading.classList.add('hidden');
+    progressBar.style.width = '0%';
+    uploadPercentage.textContent = '0%';
+    
+    if (uploadInterval) {
+        clearInterval(uploadInterval);
+        uploadInterval = null;
+    }
+}
+
+// Gestion de la programmation
 document.getElementById('id_is_scheduled').addEventListener('change', function() {
     const scheduledFields = document.getElementById('scheduled_fields');
     if (this.checked) {
