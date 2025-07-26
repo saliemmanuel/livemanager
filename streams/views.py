@@ -66,12 +66,14 @@ def dashboard(request):
 @login_required
 def profile(request):
     """Page de profil utilisateur avec gestion des clés de streaming."""
-    user_stream_keys = StreamKey.objects.filter(user=request.user).order_by("-created_at")
-    
+    user_stream_keys = StreamKey.objects.filter(user=request.user).order_by(
+        "-created_at"
+    )
+
     context = {
         "user_stream_keys": user_stream_keys,
     }
-    
+
     return render(request, "streams/profile.html", context)
 
 
@@ -86,7 +88,7 @@ def add_stream_key(request):
             return redirect("profile")
     else:
         form = StreamKeyForm(user=request.user)
-    
+
     return render(request, "streams/add_stream_key.html", {"form": form})
 
 
@@ -94,7 +96,7 @@ def add_stream_key(request):
 def edit_stream_key(request, key_id):
     """Modifier une clé de streaming existante."""
     stream_key = get_object_or_404(StreamKey, id=key_id, user=request.user)
-    
+
     if request.method == "POST":
         form = StreamKeyForm(request.POST, instance=stream_key, user=request.user)
         if form.is_valid():
@@ -103,8 +105,12 @@ def edit_stream_key(request, key_id):
             return redirect("profile")
     else:
         form = StreamKeyForm(instance=stream_key, user=request.user)
-    
-    return render(request, "streams/edit_stream_key.html", {"form": form, "stream_key": stream_key})
+
+    return render(
+        request,
+        "streams/edit_stream_key.html",
+        {"form": form, "stream_key": stream_key},
+    )
 
 
 @login_required
@@ -124,7 +130,7 @@ def toggle_stream_key(request, key_id):
     stream_key = get_object_or_404(StreamKey, id=key_id, user=request.user)
     stream_key.is_active = not stream_key.is_active
     stream_key.save()
-    
+
     status = "activée" if stream_key.is_active else "désactivée"
     messages.success(request, f"Clé de streaming {status} avec succès !")
     return redirect("profile")

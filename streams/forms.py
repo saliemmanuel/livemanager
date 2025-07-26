@@ -22,25 +22,35 @@ class UserRegistrationForm(UserCreationForm):
 
 class StreamKeyForm(forms.ModelForm):
     """Formulaire pour créer/modifier une clé de streaming."""
-    
+
     class Meta:
         model = StreamKey
         fields = ["name", "key", "platform", "is_active"]
         widgets = {
-            "name": forms.TextInput(attrs={"class": "form-input", "placeholder": "Ex: YouTube Principal"}),
-            "key": forms.TextInput(attrs={"class": "form-input", "placeholder": "rtmp://a.rtmp.youtube.com/live2/..."}),
-            "platform": forms.Select(attrs={"class": "form-select"}, choices=[
-                ("YouTube", "YouTube"),
-                ("Twitch", "Twitch"),
-                ("Facebook", "Facebook"),
-                ("Instagram", "Instagram"),
-                ("TikTok", "TikTok"),
-                ("Autre", "Autre"),
-            ]),
+            "name": forms.TextInput(
+                attrs={"class": "form-input", "placeholder": "Ex: YouTube Principal"}
+            ),
+            "key": forms.TextInput(
+                attrs={
+                    "class": "form-input",
+                    "placeholder": "rtmp://a.rtmp.youtube.com/live2/...",
+                }
+            ),
+            "platform": forms.Select(
+                attrs={"class": "form-select"},
+                choices=[
+                    ("YouTube", "YouTube"),
+                    ("Twitch", "Twitch"),
+                    ("Facebook", "Facebook"),
+                    ("Instagram", "Instagram"),
+                    ("TikTok", "TikTok"),
+                    ("Autre", "Autre"),
+                ],
+            ),
         }
 
     def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
+        self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
     def save(self, commit=True):
@@ -67,17 +77,16 @@ class LiveForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
+        self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
-        
+
         # Filtrer les clés de streaming pour l'utilisateur connecté
         if self.user:
             self.fields["stream_key"].queryset = StreamKey.objects.filter(
-                user=self.user, 
-                is_active=True
+                user=self.user, is_active=True
             )
             self.fields["stream_key"].widget.attrs.update({"class": "form-select"})
-        
+
         self.fields["video_file"].widget.attrs.update({"class": "form-input"})
         self.fields["is_scheduled"].widget.attrs.update({"class": "form-checkbox"})
 
