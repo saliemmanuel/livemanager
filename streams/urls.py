@@ -35,7 +35,11 @@ urlpatterns = [
     path("live/<int:live_id>/start/", views.start_live, name="start_live"),
     path("live/<int:live_id>/stop/", views.stop_live, name="stop_live"),
     # Vérification du statut
-    path("check-approval-status/", views.check_approval_status, name="check_approval_status"),
+    path(
+        "check-approval-status/",
+        views.check_approval_status,
+        name="check_approval_status",
+    ),
     # Dashboard admin
     path("admin-dashboard/", views.admin_dashboard, name="admin_dashboard"),
     path("admin-users/", views.admin_users, name="admin_users"),

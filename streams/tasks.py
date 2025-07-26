@@ -50,13 +50,13 @@ def start_live_stream(live_id):
         ]
 
         # Démarrer le processus FFmpeg (compatible Windows et Linux)
-        if sys.platform.startswith('win'):
+        if sys.platform.startswith("win"):
             # Windows: utiliser subprocess.Popen avec creationflags
             process = subprocess.Popen(
                 command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
             )
         else:
             # Linux/Unix: utiliser subprocess.Popen normal
@@ -64,7 +64,7 @@ def start_live_stream(live_id):
                 command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                start_new_session=True  # Créer une nouvelle session
+                start_new_session=True,  # Créer une nouvelle session
             )
 
         # Sauvegarder le PID
@@ -99,12 +99,12 @@ def stop_live_stream(live_id):
 
         # Arrêt du processus FFmpeg selon la plateforme
         try:
-            if sys.platform.startswith('win'):
+            if sys.platform.startswith("win"):
                 # Windows: utiliser taskkill
                 subprocess.run(
                     ["taskkill", "/F", "/PID", str(live.ffmpeg_pid)],
                     capture_output=True,
-                    timeout=10
+                    timeout=10,
                 )
             else:
                 # Linux/Unix: utiliser os.kill
@@ -128,29 +128,31 @@ def send_admin_notification(live_id):
     """Envoie une notification à l'admin quand un live démarre."""
     try:
         live = Live.objects.get(id=live_id)
-        
+
         subject = f"Live démarré: {live.title}"
         message = f"""
         Un live a été démarré:
-        
+
         Titre: {live.title}
         Utilisateur: {live.user.username} ({live.user.email})
         PID: {live.ffmpeg_pid}
         Heure: {timezone.now()}
         """
-        
+
         # Envoyer à tous les admins
-        admin_emails = User.objects.filter(is_admin=True).values_list('email', flat=True)
-        
+        admin_emails = User.objects.filter(is_admin=True).values_list(
+            "email", flat=True
+        )
+
         for admin_email in admin_emails:
             send_mail(
                 subject,
                 message,
-                'noreply@livemanager.com',
+                "noreply@livemanager.com",
                 [admin_email],
                 fail_silently=True,
             )
-            
+
     except Exception:
         pass  # Ignorer les erreurs de notification
 
@@ -160,26 +162,26 @@ def send_error_notification(live_id, error_message):
     """Envoie une notification d'erreur."""
     try:
         live = Live.objects.get(id=live_id)
-        
+
         subject = f"Erreur live: {live.title}"
         message = f"""
         Une erreur s'est produite lors du démarrage du live:
-        
+
         Titre: {live.title}
         Utilisateur: {live.user.username} ({live.user.email})
         Erreur: {error_message}
         Heure: {timezone.now()}
         """
-        
+
         # Envoyer à l'utilisateur
         send_mail(
             subject,
             message,
-            'noreply@livemanager.com',
+            "noreply@livemanager.com",
             [live.user.email],
             fail_silently=True,
         )
-        
+
     except Exception:
         pass  # Ignorer les erreurs de notification
 

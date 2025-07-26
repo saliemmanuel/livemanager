@@ -27,7 +27,7 @@ def test_ffmpeg_command():
         return False
 
     # Vérifier si setsid est disponible (Linux/Unix seulement)
-    if not sys.platform.startswith('win'):
+    if not sys.platform.startswith("win"):
         try:
             result = subprocess.run(
                 ["setsid", "--help"], capture_output=True, text=True, timeout=5
@@ -71,7 +71,7 @@ def test_ffmpeg_command():
     test_rtmp_url = "rtmp://a.rtmp.youtube.com/live2/test-key"
 
     # Commande FFmpeg exacte comme spécifiée (sans setsid pour Windows)
-    if sys.platform.startswith('win'):
+    if sys.platform.startswith("win"):
         ffmpeg_cmd = [
             "ffmpeg",
             "-re",  # Lire à la vitesse réelle
@@ -166,13 +166,13 @@ def test_ffmpeg_command():
 
     # Lancer le processus
     try:
-        if sys.platform.startswith('win'):
+        if sys.platform.startswith("win"):
             # Windows: utiliser subprocess.Popen avec creationflags
             process = subprocess.Popen(
                 ffmpeg_cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
             )
         else:
             # Linux/Unix: utiliser subprocess.Popen normal
@@ -180,7 +180,7 @@ def test_ffmpeg_command():
                 ffmpeg_cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                start_new_session=True  # Créer une nouvelle session
+                start_new_session=True,  # Créer une nouvelle session
             )
 
         print(f"✅ Processus FFmpeg démarré avec PID: {process.pid}")
@@ -191,12 +191,12 @@ def test_ffmpeg_command():
 
         # Arrêter le processus
         print("🛑 Arrêt du processus...")
-        if sys.platform.startswith('win'):
+        if sys.platform.startswith("win"):
             # Windows: utiliser taskkill
             subprocess.run(
                 ["taskkill", "/F", "/PID", str(process.pid)],
                 capture_output=True,
-                timeout=10
+                timeout=10,
             )
         else:
             # Linux/Unix: utiliser os.kill

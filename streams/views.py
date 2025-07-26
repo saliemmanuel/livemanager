@@ -8,7 +8,6 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.urls import reverse
 from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import csrf_exempt
 from .forms import UserRegistrationForm, LiveForm, StreamKeyForm
 from .models import User, Live, StreamKey
 
@@ -55,20 +54,20 @@ def logout_view(request):
 def dashboard(request):
     """Dashboard utilisateur."""
     lives = Live.objects.filter(user=request.user).order_by("-created_at")
-    
+
     context = {
         "lives": lives,
         "is_approved": request.user.is_approved,
         "user_lives": lives,  # Pour compatibilité avec le template
     }
-    
+
     if not request.user.is_approved:
         messages.warning(
             request,
             "Votre compte n'est pas encore approuvé. "
             "Un administrateur vous activera bientôt.",
         )
-    
+
     return render(request, "streams/dashboard.html", context)
 
 
@@ -291,7 +290,7 @@ def create_live(request):
                             return JsonResponse(
                                 {
                                     "success": False,
-                                    "message": f"Erreur lors de la compression: {str(e)}",
+                                    "message": f"Erreur compression: {str(e)}",
                                 }
                             )
 
@@ -323,7 +322,10 @@ def create_live(request):
             print(f"[DEBUG] Formulaire invalide: {form.errors}")
             if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                 return JsonResponse(
-                    {"success": False, "message": f"Erreur de validation: {form.errors}"}
+                    {
+                        "success": False,
+                        "message": f"Erreur de validation: {form.errors}",
+                    }
                 )
 
             messages.error(request, f"Erreur de validation: {form.errors}")
@@ -408,13 +410,13 @@ def start_live(request, live_id):
         print(f"[DEBUG] Commande FFmpeg: {' '.join(ffmpeg_cmd)}")
 
         # Lancer FFmpeg en arrière-plan (compatible Windows et Linux)
-        if sys.platform.startswith('win'):
+        if sys.platform.startswith("win"):
             # Windows: utiliser subprocess.Popen avec creationflags
             process = subprocess.Popen(
                 ffmpeg_cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
             )
         else:
             # Linux/Unix: utiliser subprocess.Popen normal
@@ -422,7 +424,7 @@ def start_live(request, live_id):
                 ffmpeg_cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                start_new_session=True  # Créer une nouvelle session
+                start_new_session=True,  # Créer une nouvelle session
             )
 
         # Sauvegarder le PID et mettre à jour le statut
@@ -464,12 +466,12 @@ def stop_live(request, live_id):
 
             try:
                 # Arrêter le processus selon la plateforme
-                if sys.platform.startswith('win'):
+                if sys.platform.startswith("win"):
                     # Windows: utiliser taskkill
                     subprocess.run(
                         ["taskkill", "/F", "/PID", str(live.ffmpeg_pid)],
                         capture_output=True,
-                        timeout=10
+                        timeout=10,
                     )
                 else:
                     # Linux/Unix: utiliser os.kill
@@ -477,6 +479,7 @@ def stop_live(request, live_id):
 
                     # Attendre un peu pour voir si le processus s'arrête
                     import time
+
                     time.sleep(2)
 
                     # Vérifier si le processus existe encore
@@ -514,10 +517,9 @@ def stop_live(request, live_id):
 @login_required
 def check_approval_status(request):
     """Vérifier le statut d'approbation de l'utilisateur (AJAX)."""
-    return JsonResponse({
-        "is_approved": request.user.is_approved,
-        "username": request.user.username
-    })
+    return JsonResponse(
+        {"is_approved": request.user.is_approved, "username": request.user.username}
+    )
 
 
 @user_passes_test(is_admin)
@@ -550,13 +552,14 @@ def approve_user(request, user_id):
     user = get_object_or_404(User, id=user_id)
     user.is_approved = True
     user.save()
-    
+
     # Forcer la mise à jour de la session si l'utilisateur est connecté
     if user.is_authenticated:
         # Mettre à jour la session de l'utilisateur
         from django.contrib.auth import update_session_auth_hash
+
         update_session_auth_hash(request, user)
-    
+
     messages.success(request, f"Utilisateur {user.username} approuvé avec succès !")
     return redirect("admin_users")
 
