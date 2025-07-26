@@ -362,28 +362,36 @@ def start_live(request, live_id):
         
         # Commande FFmpeg pour le streaming
         ffmpeg_cmd = [
-            "ffmpeg",
+            "setsid", "ffmpeg",
             "-re",  # Lire à la vitesse réelle
+            "-stream_loop", "-1",  # Boucle infinie
             "-i", video_path,  # Fichier d'entrée
             "-c:v", "libx264",  # Codec vidéo H.264
             "-preset", "ultrafast",  # Preset rapide pour streaming
-            "-tune", "zerolatency",  # Optimisation latence
+            "-b:v", "500k",  # Bitrate vidéo 500k
+            "-maxrate", "800k",  # Bitrate maximum 800k
+            "-bufsize", "1200k",  # Taille du buffer 1200k
+            "-s", "640x360",  # Résolution 640x360
+            "-g", "60",  # GOP size 60
+            "-keyint_min", "60",  # Keyframe minimum 60
             "-c:a", "aac",  # Codec audio AAC
-            "-b:a", "128k",  # Bitrate audio
+            "-b:a", "96k",  # Bitrate audio 96k
             "-f", "flv",  # Format de sortie FLV
-            "-flvflags", "no_duration_filesize",  # Optimisation FLV
+            "-reconnect", "1",  # Activer la reconnexion
+            "-reconnect_streamed", "1",  # Reconnexion pour streaming
+            "-reconnect_delay_max", "2",  # Délai max de reconnexion 2s
             rtmp_url  # URL de destination RTMP
         ]
 
         print(f"[DEBUG] Démarrage live {live.id}")
         print(f"[DEBUG] Commande FFmpeg: {' '.join(ffmpeg_cmd)}")
 
-        # Lancer FFmpeg en arrière-plan
+        # Lancer FFmpeg en arrière-plan avec setsid
         process = subprocess.Popen(
             ffmpeg_cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            preexec_fn=os.setsid  # Créer un nouveau groupe de processus
+            # setsid gère déjà la création d'un nouveau groupe de session
         )
 
         # Sauvegarder le PID et mettre à jour le statut
@@ -423,8 +431,9 @@ def stop_live(request, live_id):
             print(f"[DEBUG] Arrêt du live {live.id} avec PID {live.ffmpeg_pid}")
             
             try:
-                # Tenter d'arrêter le processus proprement
-                os.killpg(os.getpgid(live.ffmpeg_pid), 15)  # SIGTERM
+                # Avec setsid, le processus est le leader du groupe de session
+                # On peut donc l'arrêter directement avec son PID
+                os.kill(live.ffmpeg_pid, 15)  # SIGTERM
                 
                 # Attendre un peu pour voir si le processus s'arrête
                 import time
@@ -434,7 +443,7 @@ def stop_live(request, live_id):
                 try:
                     os.kill(live.ffmpeg_pid, 0)  # Test si le processus existe
                     # Si on arrive ici, le processus existe encore, le forcer
-                    os.killpg(os.getpgid(live.ffmpeg_pid), 9)  # SIGKILL
+                    os.kill(live.ffmpeg_pid, 9)  # SIGKILL
                     print(f"[DEBUG] Processus {live.ffmpeg_pid} forcé à s'arrêter")
                 except OSError:
                     print(f"[DEBUG] Processus {live.ffmpeg_pid} arrêté proprement")
