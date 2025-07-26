@@ -1,16 +1,16 @@
 import os
-import subprocess
+import sys
 import tempfile
+import subprocess
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth import logout
 from django.contrib import messages
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
 from django.urls import reverse
-from django.db.models import Q
-from .models import User, Live, StreamKey
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 from .forms import UserRegistrationForm, LiveForm, StreamKeyForm
+from .models import User, Live, StreamKey
 
 
 def is_admin(user):
@@ -28,57 +28,54 @@ def register(request):
     if request.method == "POST":
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
-            form.save()
+            user = form.save(commit=False)
+            user.is_approved = False  # Nécessite approbation admin
+            user.save()
             messages.success(
                 request,
-                "Compte créé avec succès ! En attente d'approbation par "
-                "l'administrateur.",
+                "Inscription réussie ! Votre compte sera activé par un administrateur.",
             )
             return redirect("login")
     else:
         form = UserRegistrationForm()
-
     return render(request, "streams/register.html", {"form": form})
 
 
 @require_POST
 def logout_view(request):
-    """Vue de déconnexion personnalisée."""
+    """Déconnexion utilisateur."""
+    from django.contrib.auth import logout
+
     logout(request)
-    messages.success(request, "Vous avez été déconnecté avec succès.")
+    messages.success(request, "Vous avez été déconnecté.")
     return redirect("home")
 
 
 @login_required
 def dashboard(request):
     """Dashboard utilisateur."""
-    user_lives = Live.objects.filter(user=request.user).order_by("-created_at")
+    if not request.user.is_approved:
+        messages.warning(
+            request,
+            "Votre compte n'est pas encore approuvé. "
+            "Un administrateur vous activera bientôt.",
+        )
+        return render(request, "streams/dashboard.html")
 
-    context = {
-        "user_lives": user_lives,
-        "is_approved": request.user.is_approved,
-    }
-
-    return render(request, "streams/dashboard.html", context)
+    lives = Live.objects.filter(user=request.user).order_by("-created_at")
+    return render(request, "streams/dashboard.html", {"lives": lives})
 
 
 @login_required
 def profile(request):
-    """Page de profil utilisateur avec gestion des clés de streaming."""
-    user_stream_keys = StreamKey.objects.filter(user=request.user).order_by(
-        "-created_at"
-    )
-
-    context = {
-        "user_stream_keys": user_stream_keys,
-    }
-
-    return render(request, "streams/profile.html", context)
+    """Profil utilisateur avec gestion des clés de streaming."""
+    stream_keys = StreamKey.objects.filter(user=request.user).order_by("-created_at")
+    return render(request, "streams/profile.html", {"stream_keys": stream_keys})
 
 
 @login_required
 def add_stream_key(request):
-    """Ajouter une nouvelle clé de streaming."""
+    """Ajouter une clé de streaming."""
     if request.method == "POST":
         form = StreamKeyForm(request.POST, user=request.user)
         if form.is_valid():
@@ -87,15 +84,13 @@ def add_stream_key(request):
             return redirect("profile")
     else:
         form = StreamKeyForm(user=request.user)
-
     return render(request, "streams/add_stream_key.html", {"form": form})
 
 
 @login_required
 def edit_stream_key(request, key_id):
-    """Modifier une clé de streaming existante."""
+    """Modifier une clé de streaming."""
     stream_key = get_object_or_404(StreamKey, id=key_id, user=request.user)
-
     if request.method == "POST":
         form = StreamKeyForm(request.POST, instance=stream_key, user=request.user)
         if form.is_valid():
@@ -104,12 +99,7 @@ def edit_stream_key(request, key_id):
             return redirect("profile")
     else:
         form = StreamKeyForm(instance=stream_key, user=request.user)
-
-    return render(
-        request,
-        "streams/edit_stream_key.html",
-        {"form": form, "stream_key": stream_key},
-    )
+    return render(request, "streams/edit_stream_key.html", {"form": form})
 
 
 @login_required
@@ -129,7 +119,6 @@ def toggle_stream_key(request, key_id):
     stream_key = get_object_or_404(StreamKey, id=key_id, user=request.user)
     stream_key.is_active = not stream_key.is_active
     stream_key.save()
-
     status = "activée" if stream_key.is_active else "désactivée"
     messages.success(request, f"Clé de streaming {status} avec succès !")
     return redirect("profile")
@@ -287,56 +276,56 @@ def create_live(request):
                             raise Exception(f"Erreur FFmpeg: {result.stderr}")
 
                     except Exception as e:
-                        print(f"[DEBUG] Exception lors du traitement vidéo: {str(e)}")
+                        print(f"[DEBUG] Erreur lors de la compression: {str(e)}")
                         # Nettoyer le fichier temporaire en cas d'erreur
                         if os.path.exists(temp_file_path):
                             os.unlink(temp_file_path)
-                        raise e
+
+                        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                            return JsonResponse(
+                                {
+                                    "success": False,
+                                    "message": f"Erreur lors de la compression: {str(e)}",
+                                }
+                            )
+
+                        messages.error(
+                            request, f"Erreur lors de la compression: {str(e)}"
+                        )
+                        return redirect("dashboard")
 
                 else:
-                    # Pas de fichier vidéo, sauvegarder normalement
-                    live.save()
-                    print(f"[DEBUG] Live sauvegardé sans vidéo: {live.id}")
-
+                    # Pas de fichier vidéo
                     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                         return JsonResponse(
-                            {
-                                "success": True,
-                                "message": "Live créé avec succès !",
-                                "redirect_url": reverse("dashboard"),
-                            }
+                            {"success": False, "message": "Aucun fichier vidéo fourni"}
                         )
 
-                    messages.success(request, "Live créé avec succès !")
+                    messages.error(request, "Aucun fichier vidéo fourni")
                     return redirect("dashboard")
 
             except Exception as e:
-                print(f"[DEBUG] Exception générale: {str(e)}")
+                print(f"[DEBUG] Erreur générale: {str(e)}")
                 if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                     return JsonResponse(
-                        {
-                            "success": False,
-                            "message": f"Erreur lors de la création: {str(e)}",
-                        },
-                        status=400,
+                        {"success": False, "message": f"Erreur: {str(e)}"}
                     )
-                else:
-                    messages.error(request, f"Erreur lors de la création: {str(e)}")
+
+                messages.error(request, f"Erreur: {str(e)}")
+                return redirect("dashboard")
         else:
             print(f"[DEBUG] Formulaire invalide: {form.errors}")
             if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                 return JsonResponse(
-                    {
-                        "success": False,
-                        "message": "Données invalides",
-                        "errors": form.errors,
-                    },
-                    status=400,
+                    {"success": False, "message": f"Erreur de validation: {form.errors}"}
                 )
+
+            messages.error(request, f"Erreur de validation: {form.errors}")
+            return redirect("dashboard")
+
     else:
         form = LiveForm(user=request.user)
-
-    return render(request, "streams/create_live.html", {"form": form})
+        return render(request, "streams/create_live.html", {"form": form})
 
 
 @login_required
@@ -370,9 +359,8 @@ def start_live(request, live_id):
         # Construire l'URL RTMP avec la clé de streaming
         rtmp_url = live.stream_key.key
 
-        # Commande FFmpeg pour le streaming
+        # Commande FFmpeg pour le streaming (sans setsid pour compatibilité Windows)
         ffmpeg_cmd = [
-            "setsid",
             "ffmpeg",
             "-re",  # Lire à la vitesse réelle
             "-stream_loop",
@@ -413,13 +401,23 @@ def start_live(request, live_id):
         print(f"[DEBUG] Démarrage live {live.id}")
         print(f"[DEBUG] Commande FFmpeg: {' '.join(ffmpeg_cmd)}")
 
-        # Lancer FFmpeg en arrière-plan avec setsid
-        process = subprocess.Popen(
-            ffmpeg_cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            # setsid gère déjà la création d'un nouveau groupe de session
-        )
+        # Lancer FFmpeg en arrière-plan (compatible Windows et Linux)
+        if sys.platform.startswith('win'):
+            # Windows: utiliser subprocess.Popen avec creationflags
+            process = subprocess.Popen(
+                ffmpeg_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+            )
+        else:
+            # Linux/Unix: utiliser subprocess.Popen normal
+            process = subprocess.Popen(
+                ffmpeg_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                start_new_session=True  # Créer une nouvelle session
+            )
 
         # Sauvegarder le PID et mettre à jour le statut
         live.ffmpeg_pid = process.pid
@@ -459,25 +457,32 @@ def stop_live(request, live_id):
             print(f"[DEBUG] Arrêt du live {live.id} avec PID {live.ffmpeg_pid}")
 
             try:
-                # Avec setsid, le processus est le leader du groupe de session
-                # On peut donc l'arrêter directement avec son PID
-                os.kill(live.ffmpeg_pid, 15)  # SIGTERM
+                # Arrêter le processus selon la plateforme
+                if sys.platform.startswith('win'):
+                    # Windows: utiliser taskkill
+                    subprocess.run(
+                        ["taskkill", "/F", "/PID", str(live.ffmpeg_pid)],
+                        capture_output=True,
+                        timeout=10
+                    )
+                else:
+                    # Linux/Unix: utiliser os.kill
+                    os.kill(live.ffmpeg_pid, 15)  # SIGTERM
 
-                # Attendre un peu pour voir si le processus s'arrête
-                import time
+                    # Attendre un peu pour voir si le processus s'arrête
+                    import time
+                    time.sleep(2)
 
-                time.sleep(2)
+                    # Vérifier si le processus existe encore
+                    try:
+                        os.kill(live.ffmpeg_pid, 0)  # Test si le processus existe
+                        # Si on arrive ici, le processus existe encore, le forcer
+                        os.kill(live.ffmpeg_pid, 9)  # SIGKILL
+                        print(f"[DEBUG] Processus {live.ffmpeg_pid} forcé à s'arrêter")
+                    except OSError:
+                        print(f"[DEBUG] Processus {live.ffmpeg_pid} arrêté proprement")
 
-                # Vérifier si le processus existe encore
-                try:
-                    os.kill(live.ffmpeg_pid, 0)  # Test si le processus existe
-                    # Si on arrive ici, le processus existe encore, le forcer
-                    os.kill(live.ffmpeg_pid, 9)  # SIGKILL
-                    print(f"[DEBUG] Processus {live.ffmpeg_pid} forcé à s'arrêter")
-                except OSError:
-                    print(f"[DEBUG] Processus {live.ffmpeg_pid} arrêté proprement")
-
-            except OSError as e:
+            except Exception as e:
                 print(
                     f"[DEBUG] Erreur lors de l'arrêt du processus "
                     f"{live.ffmpeg_pid}: {e}"
@@ -503,55 +508,24 @@ def stop_live(request, live_id):
 @user_passes_test(is_admin)
 def admin_dashboard(request):
     """Dashboard administrateur."""
-    users = User.objects.all().order_by("-date_joined")
-    all_lives = Live.objects.all().order_by("-created_at")
-
+    total_users = User.objects.count()
+    approved_users = User.objects.filter(is_approved=True).count()
+    total_lives = Live.objects.count()
+    running_lives = Live.objects.filter(status="running").count()
     context = {
-        "users": users,
-        "all_lives": all_lives,
+        "total_users": total_users,
+        "approved_users": approved_users,
+        "total_lives": total_lives,
+        "running_lives": running_lives,
     }
-
     return render(request, "streams/admin_dashboard.html", context)
 
 
 @user_passes_test(is_admin)
 def admin_users(request):
-    """Page de gestion des utilisateurs pour l'admin."""
-    # Filtres
-    search = request.GET.get("search", "")
-    status_filter = request.GET.get("status", "")
-
+    """Gestion des utilisateurs par l'admin."""
     users = User.objects.all().order_by("-date_joined")
-
-    # Filtre par recherche
-    if search:
-        users = users.filter(Q(username__icontains=search) | Q(email__icontains=search))
-
-    # Filtre par statut
-    if status_filter == "pending":
-        users = users.filter(is_approved=False)
-    elif status_filter == "approved":
-        users = users.filter(is_approved=True)
-    elif status_filter == "admin":
-        users = users.filter(is_admin=True)
-
-    # Statistiques
-    total_users = User.objects.count()
-    pending_users = User.objects.filter(is_approved=False).count()
-    approved_users = User.objects.filter(is_approved=True).count()
-    admin_users = User.objects.filter(is_admin=True).count()
-
-    context = {
-        "users": users,
-        "total_users": total_users,
-        "pending_users": pending_users,
-        "approved_users": approved_users,
-        "admin_users": admin_users,
-        "search": search,
-        "status_filter": status_filter,
-    }
-
-    return render(request, "streams/admin_users.html", context)
+    return render(request, "streams/admin_users.html", {"users": users})
 
 
 @user_passes_test(is_admin)
@@ -561,7 +535,7 @@ def approve_user(request, user_id):
     user = get_object_or_404(User, id=user_id)
     user.is_approved = True
     user.save()
-    messages.success(request, f"Utilisateur {user.username} approuvé avec succès.")
+    messages.success(request, f"Utilisateur {user.username} approuvé avec succès !")
     return redirect("admin_users")
 
 
@@ -570,9 +544,8 @@ def approve_user(request, user_id):
 def reject_user(request, user_id):
     """Rejeter un utilisateur."""
     user = get_object_or_404(User, id=user_id)
-    user.is_approved = False
-    user.save()
-    messages.success(request, f"Utilisateur {user.username} rejeté.")
+    user.delete()
+    messages.success(request, f"Utilisateur {user.username} rejeté et supprimé.")
     return redirect("admin_users")
 
 

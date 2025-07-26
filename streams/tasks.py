@@ -1,11 +1,15 @@
 import subprocess
 import os
 import signal
+import sys
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
 from django.utils import timezone
 from .models import Live
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 @shared_task
@@ -22,7 +26,7 @@ def start_live_stream(live_id):
             return False
 
         # Chemin vers FFmpeg
-        ffmpeg_path = getattr(settings, "FFMPEG_PATH", "/usr/bin/ffmpeg")
+        ffmpeg_path = getattr(settings, "FFMPEG_PATH", "ffmpeg")
 
         # Commande FFmpeg pour YouTube Live
         command = [
@@ -45,12 +49,23 @@ def start_live_stream(live_id):
             f"rtmp://a.rtmp.youtube.com/live2/{live.stream_key}",  # URL YouTube
         ]
 
-        # Démarrer le processus FFmpeg
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+        # Démarrer le processus FFmpeg (compatible Windows et Linux)
+        if sys.platform.startswith('win'):
+            # Windows: utiliser subprocess.Popen avec creationflags
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+            )
+        else:
+            # Linux/Unix: utiliser subprocess.Popen normal
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                start_new_session=True  # Créer une nouvelle session
+            )
 
         # Sauvegarder le PID
         live.ffmpeg_pid = process.pid
@@ -82,10 +97,19 @@ def stop_live_stream(live_id):
         if live.status != "running" or not live.ffmpeg_pid:
             return False
 
-        # Arrêt du processus FFmpeg
+        # Arrêt du processus FFmpeg selon la plateforme
         try:
-            os.kill(live.ffmpeg_pid, signal.SIGKILL)
-        except ProcessLookupError:
+            if sys.platform.startswith('win'):
+                # Windows: utiliser taskkill
+                subprocess.run(
+                    ["taskkill", "/F", "/PID", str(live.ffmpeg_pid)],
+                    capture_output=True,
+                    timeout=10
+                )
+            else:
+                # Linux/Unix: utiliser os.kill
+                os.kill(live.ffmpeg_pid, signal.SIGKILL)
+        except (ProcessLookupError, subprocess.TimeoutExpired):
             pass  # Le processus n'existe plus
 
         # Mise à jour du statut
@@ -101,29 +125,34 @@ def stop_live_stream(live_id):
 
 @shared_task
 def send_admin_notification(live_id):
-    """Envoie une notification à l'admin lors du démarrage d'un live."""
+    """Envoie une notification à l'admin quand un live démarre."""
     try:
         live = Live.objects.get(id=live_id)
-
-        # Trouver les admins
-        admins = Live.objects.filter(user__is_admin=True)
-
-        for admin in admins:
+        
+        subject = f"Live démarré: {live.title}"
+        message = f"""
+        Un live a été démarré:
+        
+        Titre: {live.title}
+        Utilisateur: {live.user.username} ({live.user.email})
+        PID: {live.ffmpeg_pid}
+        Heure: {timezone.now()}
+        """
+        
+        # Envoyer à tous les admins
+        admin_emails = User.objects.filter(is_admin=True).values_list('email', flat=True)
+        
+        for admin_email in admin_emails:
             send_mail(
-                subject=f"Live démarré: {live.title}",
-                message=f"""
-                Un live a été démarré:
-
-                Titre: {live.title}
-                Utilisateur: {live.user.email}
-                Heure: {timezone.now()}
-                """,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[admin.user.email],
+                subject,
+                message,
+                'noreply@livemanager.com',
+                [admin_email],
                 fail_silently=True,
             )
+            
     except Exception:
-        pass
+        pass  # Ignorer les erreurs de notification
 
 
 @shared_task
@@ -131,23 +160,28 @@ def send_error_notification(live_id, error_message):
     """Envoie une notification d'erreur."""
     try:
         live = Live.objects.get(id=live_id)
-
+        
+        subject = f"Erreur live: {live.title}"
+        message = f"""
+        Une erreur s'est produite lors du démarrage du live:
+        
+        Titre: {live.title}
+        Utilisateur: {live.user.username} ({live.user.email})
+        Erreur: {error_message}
+        Heure: {timezone.now()}
+        """
+        
+        # Envoyer à l'utilisateur
         send_mail(
-            subject=f"Erreur lors du démarrage du live: {live.title}",
-            message=f"""
-            Une erreur s'est produite lors du démarrage du live:
-
-            Titre: {live.title}
-            Utilisateur: {live.user.email}
-            Erreur: {error_message}
-            Heure: {timezone.now()}
-            """,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[live.user.email],
+            subject,
+            message,
+            'noreply@livemanager.com',
+            [live.user.email],
             fail_silently=True,
         )
+        
     except Exception:
-        pass
+        pass  # Ignorer les erreurs de notification
 
 
 @shared_task

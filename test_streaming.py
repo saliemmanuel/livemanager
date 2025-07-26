@@ -6,6 +6,7 @@ Script de test pour la commande FFmpeg de streaming
 import os
 import subprocess
 import time
+import sys
 
 
 def test_ffmpeg_command():
@@ -25,15 +26,18 @@ def test_ffmpeg_command():
         print("❌ FFmpeg n'est pas installé")
         return False
 
-    # Vérifier si setsid est disponible
-    try:
-        result = subprocess.run(
-            ["setsid", "--help"], capture_output=True, text=True, timeout=5
-        )
-        print("✅ setsid est disponible")
-    except FileNotFoundError:
-        print("❌ setsid n'est pas disponible")
-        return False
+    # Vérifier si setsid est disponible (Linux/Unix seulement)
+    if not sys.platform.startswith('win'):
+        try:
+            result = subprocess.run(
+                ["setsid", "--help"], capture_output=True, text=True, timeout=5
+            )
+            print("✅ setsid est disponible")
+        except FileNotFoundError:
+            print("❌ setsid n'est pas disponible")
+            return False
+    else:
+        print("✅ Windows détecté - setsid non nécessaire")
 
     # Créer un fichier vidéo de test si nécessaire
     test_video = "test_video.mp4"
@@ -66,45 +70,85 @@ def test_ffmpeg_command():
     # URL de test (remplacer par une vraie clé de streaming pour tester)
     test_rtmp_url = "rtmp://a.rtmp.youtube.com/live2/test-key"
 
-    # Commande FFmpeg exacte comme spécifiée
-    ffmpeg_cmd = [
-        "setsid",
-        "ffmpeg",
-        "-re",  # Lire à la vitesse réelle
-        "-stream_loop",
-        "-1",  # Boucle infinie
-        "-i",
-        test_video,  # Fichier d'entrée
-        "-c:v",
-        "libx264",  # Codec vidéo H.264
-        "-preset",
-        "ultrafast",  # Preset rapide pour streaming
-        "-b:v",
-        "500k",  # Bitrate vidéo 500k
-        "-maxrate",
-        "800k",  # Bitrate maximum 800k
-        "-bufsize",
-        "1200k",  # Taille du buffer 1200k
-        "-s",
-        "640x360",  # Résolution 640x360
-        "-g",
-        "60",  # GOP size 60
-        "-keyint_min",
-        "60",  # Keyframe minimum 60
-        "-c:a",
-        "aac",  # Codec audio AAC
-        "-b:a",
-        "96k",  # Bitrate audio 96k
-        "-f",
-        "flv",  # Format de sortie FLV
-        "-reconnect",
-        "1",  # Activer la reconnexion
-        "-reconnect_streamed",
-        "1",  # Reconnexion pour streaming
-        "-reconnect_delay_max",
-        "2",  # Délai max de reconnexion 2s
-        test_rtmp_url,  # URL de destination RTMP
-    ]
+    # Commande FFmpeg exacte comme spécifiée (sans setsid pour Windows)
+    if sys.platform.startswith('win'):
+        ffmpeg_cmd = [
+            "ffmpeg",
+            "-re",  # Lire à la vitesse réelle
+            "-stream_loop",
+            "-1",  # Boucle infinie
+            "-i",
+            test_video,  # Fichier d'entrée
+            "-c:v",
+            "libx264",  # Codec vidéo H.264
+            "-preset",
+            "ultrafast",  # Preset rapide pour streaming
+            "-b:v",
+            "500k",  # Bitrate vidéo 500k
+            "-maxrate",
+            "800k",  # Bitrate maximum 800k
+            "-bufsize",
+            "1200k",  # Taille du buffer 1200k
+            "-s",
+            "640x360",  # Résolution 640x360
+            "-g",
+            "60",  # GOP size 60
+            "-keyint_min",
+            "60",  # Keyframe minimum 60
+            "-c:a",
+            "aac",  # Codec audio AAC
+            "-b:a",
+            "96k",  # Bitrate audio 96k
+            "-f",
+            "flv",  # Format de sortie FLV
+            "-reconnect",
+            "1",  # Activer la reconnexion
+            "-reconnect_streamed",
+            "1",  # Reconnexion pour streaming
+            "-reconnect_delay_max",
+            "2",  # Délai max de reconnexion 2s
+            test_rtmp_url,  # URL de destination RTMP
+        ]
+    else:
+        # Linux/Unix: utiliser setsid
+        ffmpeg_cmd = [
+            "setsid",
+            "ffmpeg",
+            "-re",  # Lire à la vitesse réelle
+            "-stream_loop",
+            "-1",  # Boucle infinie
+            "-i",
+            test_video,  # Fichier d'entrée
+            "-c:v",
+            "libx264",  # Codec vidéo H.264
+            "-preset",
+            "ultrafast",  # Preset rapide pour streaming
+            "-b:v",
+            "500k",  # Bitrate vidéo 500k
+            "-maxrate",
+            "800k",  # Bitrate maximum 800k
+            "-bufsize",
+            "1200k",  # Taille du buffer 1200k
+            "-s",
+            "640x360",  # Résolution 640x360
+            "-g",
+            "60",  # GOP size 60
+            "-keyint_min",
+            "60",  # Keyframe minimum 60
+            "-c:a",
+            "aac",  # Codec audio AAC
+            "-b:a",
+            "96k",  # Bitrate audio 96k
+            "-f",
+            "flv",  # Format de sortie FLV
+            "-reconnect",
+            "1",  # Activer la reconnexion
+            "-reconnect_streamed",
+            "1",  # Reconnexion pour streaming
+            "-reconnect_delay_max",
+            "2",  # Délai max de reconnexion 2s
+            test_rtmp_url,  # URL de destination RTMP
+        ]
 
     print("\n🔧 Commande FFmpeg:")
     print(" ".join(ffmpeg_cmd))
@@ -120,37 +164,51 @@ def test_ffmpeg_command():
     print("\n🚀 Lancement du test de streaming...")
     print("Le processus va tourner pendant 10 secondes puis s'arrêter automatiquement")
 
+    # Lancer le processus
     try:
-        # Lancer FFmpeg
-        process = subprocess.Popen(
-            ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        if sys.platform.startswith('win'):
+            # Windows: utiliser subprocess.Popen avec creationflags
+            process = subprocess.Popen(
+                ffmpeg_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+            )
+        else:
+            # Linux/Unix: utiliser subprocess.Popen normal
+            process = subprocess.Popen(
+                ffmpeg_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                start_new_session=True  # Créer une nouvelle session
+            )
 
-        print(f"✅ Processus FFmpeg lancé avec PID: {process.pid}")
+        print(f"✅ Processus FFmpeg démarré avec PID: {process.pid}")
+        print("⏳ Attente de 10 secondes...")
 
         # Attendre 10 secondes
         time.sleep(10)
 
         # Arrêter le processus
         print("🛑 Arrêt du processus...")
-        process.terminate()
+        if sys.platform.startswith('win'):
+            # Windows: utiliser taskkill
+            subprocess.run(
+                ["taskkill", "/F", "/PID", str(process.pid)],
+                capture_output=True,
+                timeout=10
+            )
+        else:
+            # Linux/Unix: utiliser os.kill
+            os.kill(process.pid, 15)  # SIGTERM
+            time.sleep(2)
+            try:
+                os.kill(process.pid, 0)  # Test si le processus existe
+                os.kill(process.pid, 9)  # SIGKILL si nécessaire
+            except OSError:
+                pass
 
-        # Attendre l'arrêt
-        try:
-            process.wait(timeout=5)
-            print("✅ Processus arrêté proprement")
-        except subprocess.TimeoutExpired:
-            print("⚠️  Processus ne s'arrête pas, arrêt forcé...")
-            process.kill()
-            process.wait()
-            print("✅ Processus arrêté forcément")
-
-        # Afficher les logs
-        stdout, stderr = process.communicate()
-        if stderr:
-            print("\n📋 Logs FFmpeg:")
-            print(stderr.decode())
-
+        print("✅ Test terminé avec succès!")
         return True
 
     except Exception as e:
@@ -158,17 +216,5 @@ def test_ffmpeg_command():
         return False
 
 
-def main():
-    """Fonction principale."""
-    print("🎬 Test de la commande FFmpeg de streaming pour LiveManager\n")
-
-    if test_ffmpeg_command():
-        print("\n🎉 Test terminé avec succès!")
-        print("La commande FFmpeg est prête pour LiveManager")
-    else:
-        print("\n💥 Test échoué!")
-        print("Vérifiez l'installation de FFmpeg et les paramètres")
-
-
 if __name__ == "__main__":
-    main()
+    test_ffmpeg_command()
