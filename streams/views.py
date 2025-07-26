@@ -93,7 +93,7 @@ def create_live(request):
                             "success": False,
                             "message": f"Erreur lors de la création: {str(e)}",
                         },
-                        status=400,
+                        status=400, 
                     )
                 else:
                     messages.error(request, f"Erreur lors de la création: {str(e)}")
