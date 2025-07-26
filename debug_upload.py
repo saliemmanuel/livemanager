@@ -38,7 +38,6 @@ def check_django_settings():
     log("Vérification de la configuration Django...")
 
     try:
-        import django
         from django.conf import settings
 
         # Vérifier les paramètres critiques
@@ -72,7 +71,6 @@ def check_media_directory():
     log("Vérification du répertoire media...")
 
     try:
-        import django
         from django.conf import settings
 
         media_root = getattr(settings, "MEDIA_ROOT", None)
@@ -121,7 +119,6 @@ def check_file_upload_settings():
     log("Vérification des paramètres d'upload...")
 
     try:
-        import django
         from django.conf import settings
 
         # Vérifier les paramètres critiques
@@ -290,8 +287,6 @@ def test_file_upload():
     log("Test d'upload de fichier...")
 
     try:
-        import django
-        from django.conf import settings
         from django.core.files.uploadedfile import SimpleUploadedFile
 
         # Créer un fichier de test
@@ -368,7 +363,8 @@ def main():
         error(f"Seulement {tests_passed}/{total_tests} tests sont passés")
         print("\n🔧 Actions recommandées:")
         print(
-            "   1. Vérifier les permissions: sudo chown -R www-data:www-data /var/www/livemanager"
+            "   1. Vérifier les permissions: "
+            "sudo chown -R www-data:www-data /var/www/livemanager"
         )
         print("   2. Redémarrer les services: sudo systemctl restart livemanager nginx")
         print("   3. Vérifier les logs: sudo journalctl -u livemanager -f")
@@ -384,5 +380,5 @@ def main():
 
 
 if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)
+    test_success = main()
+    sys.exit(0 if test_success else 1)
