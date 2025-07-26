@@ -193,16 +193,13 @@ def create_live(request):
                             return JsonResponse(
                                 {
                                     "success": True,
-                                    "message": (
-                                        "Video uploadée ! (sans compression)"
-                                    ),
+                                    "message": ("Video uploadée ! (sans compression)"),
                                     "redirect_url": reverse("dashboard"),
                                 }
                             )
 
                         messages.success(
-                            request,
-                            "Vidéo uploadée avec succès ! (sans compression)"
+                            request, "Vidéo uploadée avec succès ! (sans compression)"
                         )
                         return redirect("dashboard")
 
