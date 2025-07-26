@@ -78,33 +78,37 @@ def create_live(request):
                 live.user = request.user
 
                 # Vérifier la méthode d'upload
-                upload_method = request.POST.get('upload_method')
-                
-                if upload_method == 'scp':
+                upload_method = request.POST.get("upload_method")
+
+                if upload_method == "scp":
                     # Fichier uploadé via SCP
-                    video_file_name = request.POST.get('video_file_name')
+                    video_file_name = request.POST.get("video_file_name")
                     if not video_file_name:
                         raise Exception("Nom de fichier manquant")
-                    
+
                     # Vérifier que le fichier existe
                     scp_file_path = os.path.join("media", "videos", video_file_name)
                     if not os.path.exists(scp_file_path):
-                        raise Exception(f"Fichier {video_file_name} non trouvé. Vérifiez que l'upload SCP s'est bien terminé.")
-                    
+                        raise Exception(
+                            f"Fichier {video_file_name} non trouvé. Vérifiez que l'upload SCP s'est bien terminé."
+                        )
+
                     # Utiliser le fichier SCP
                     live.video_file = f"videos/{video_file_name}"
                     live.save()
-                    
+
                     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                        return JsonResponse({
-                            "success": True,
-                            "message": "Live créé avec succès !",
-                            "redirect_url": reverse("dashboard"),
-                        })
-                    
+                        return JsonResponse(
+                            {
+                                "success": True,
+                                "message": "Live créé avec succès !",
+                                "redirect_url": reverse("dashboard"),
+                            }
+                        )
+
                     messages.success(request, "Live créé avec succès !")
                     return redirect("dashboard")
-                    
+
                 else:
                     # Upload normal via navigateur
                     if "video_file" in request.FILES:
@@ -155,7 +159,9 @@ def create_live(request):
 
                             if result.returncode == 0:
                                 # Sauvegarder le chemin de la vidéo décompressée
-                                live.video_file = f"videos/decompressed_{video_file.name}"
+                                live.video_file = (
+                                    f"videos/decompressed_{video_file.name}"
+                                )
                                 live.save()
 
                                 # Réponse JSON pour les uploads AJAX
@@ -175,7 +181,8 @@ def create_live(request):
                                     )
 
                                 messages.success(
-                                    request, "Vidéo compressée et live créé avec succès !"
+                                    request,
+                                    "Vidéo compressée et live créé avec succès !",
                                 )
                                 return redirect("dashboard")
                             else:
@@ -445,22 +452,29 @@ def upload_chunk_status(request):
 def upload_via_scp(request):
     """Génère les instructions SCP pour uploader un fichier vidéo."""
     if request.method != "POST":
-        return JsonResponse({"success": False, "message": "Méthode non autorisée"}, status=405)
-    
+        return JsonResponse(
+            {"success": False, "message": "Méthode non autorisée"}, status=405
+        )
+
     file_name = request.POST.get("file_name")
     if not file_name:
-        return JsonResponse({"success": False, "message": "Nom de fichier manquant"}, status=400)
-    
+        return JsonResponse(
+            {"success": False, "message": "Nom de fichier manquant"}, status=400
+        )
+
     # Obtenir l'IP du serveur
-    server_ip = request.META.get('SERVER_NAME', 'localhost')
-    if server_ip == 'localhost':
+    server_ip = request.META.get("SERVER_NAME", "localhost")
+    if server_ip == "localhost":
         # Si on est en local, utiliser l'IP du serveur
         import socket
+
         server_ip = socket.gethostbyname(socket.gethostname())
-    
+
     # Générer la commande SCP
-    scp_command = f'scp "{file_name}" root@{server_ip}:/var/www/livemanager/media/videos/'
-    
+    scp_command = (
+        f'scp "{file_name}" root@{server_ip}:/var/www/livemanager/media/videos/'
+    )
+
     # Instructions détaillées
     instructions = f"""
 📁 Instructions d'upload via SCP :
@@ -479,13 +493,15 @@ def upload_via_scp(request):
 • Reprise automatique en cas de coupure
 • Plus stable pour les gros fichiers
 """
-    
-    return JsonResponse({
-        "success": True,
-        "scp_command": scp_command,
-        "instructions": instructions,
-        "file_name": file_name
-    })
+
+    return JsonResponse(
+        {
+            "success": True,
+            "scp_command": scp_command,
+            "instructions": instructions,
+            "file_name": file_name,
+        }
+    )
 
 
 @csrf_exempt
@@ -493,25 +509,33 @@ def upload_via_scp(request):
 def check_file_exists(request):
     """Vérifie si un fichier existe sur le serveur après upload SCP."""
     if request.method != "POST":
-        return JsonResponse({"success": False, "message": "Méthode non autorisée"}, status=405)
-    
+        return JsonResponse(
+            {"success": False, "message": "Méthode non autorisée"}, status=405
+        )
+
     file_name = request.POST.get("file_name")
     if not file_name:
-        return JsonResponse({"success": False, "message": "Nom de fichier manquant"}, status=400)
-    
+        return JsonResponse(
+            {"success": False, "message": "Nom de fichier manquant"}, status=400
+        )
+
     # Vérifier si le fichier existe
     file_path = os.path.join("media", "videos", file_name)
     if os.path.exists(file_path):
         file_size = os.path.getsize(file_path)
-        return JsonResponse({
-            "success": True,
-            "exists": True,
-            "file_size": file_size,
-            "file_path": file_path
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "exists": True,
+                "file_size": file_size,
+                "file_path": file_path,
+            }
+        )
     else:
-        return JsonResponse({
-            "success": True,
-            "exists": False,
-            "message": "Fichier non trouvé. Vérifiez que l'upload SCP s'est bien terminé."
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "exists": False,
+                "message": "Fichier non trouvé. Vérifiez que l'upload SCP s'est bien terminé.",
+            }
+        )
