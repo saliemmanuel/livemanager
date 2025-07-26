@@ -60,12 +60,6 @@ jobs:
           sudo mkdir -p $PROJECT_DIR
           sudo mkdir -p $BACKUP_DIR
           
-          # Sauvegarder l'ancienne version
-          if [ -d "$PROJECT_DIR" ]; then
-            sudo tar -czf "$BACKUP_DIR/backup_$TIMESTAMP.tar.gz" -C $PROJECT_DIR .
-            echo "Backup créé: backup_$TIMESTAMP.tar.gz"
-          fi
-          
           # Aller dans le répertoire du projet
           cd $PROJECT_DIR
           
@@ -73,23 +67,86 @@ jobs:
           sudo systemctl stop livemanager || true
           sudo systemctl stop livemanager-celery || true
           
-          # Nettoyer le répertoire
-          sudo rm -rf *
+          # Vérifier si c'est un repository Git existant
+          if [ -d ".git" ]; then
+            echo "Repository Git existant détecté - Mise à jour..."
+            
+            # Sauvegarder les fichiers sensibles
+            if [ -f ".env" ]; then
+              sudo cp .env /tmp/livemanager_env_backup
+              echo "Fichier .env sauvegardé"
+            fi
+            
+            # Sauvegarder les médias si ils existent
+            if [ -d "media" ]; then
+              sudo tar -czf "$BACKUP_DIR/media_backup_$TIMESTAMP.tar.gz" media/
+              echo "Dossier media sauvegardé"
+            fi
+            
+            # Sauvegarder les fichiers statiques si ils existent
+            if [ -d "staticfiles" ]; then
+              sudo tar -czf "$BACKUP_DIR/staticfiles_backup_$TIMESTAMP.tar.gz" staticfiles/
+              echo "Dossier staticfiles sauvegardé"
+            fi
+            
+            # Faire un pull pour mettre à jour le code
+            sudo git fetch origin
+            sudo git reset --hard origin/main
+            
+            # Restaurer les fichiers sensibles
+            if [ -f "/tmp/livemanager_env_backup" ]; then
+              sudo cp /tmp/livemanager_env_backup .env
+              sudo rm /tmp/livemanager_env_backup
+              echo "Fichier .env restauré"
+            fi
+            
+            # Restaurer les médias
+            if [ -f "$BACKUP_DIR/media_backup_$TIMESTAMP.tar.gz" ]; then
+              sudo tar -xzf "$BACKUP_DIR/media_backup_$TIMESTAMP.tar.gz" -C .
+              echo "Dossier media restauré"
+            fi
+            
+            # Restaurer les fichiers statiques
+            if [ -f "$BACKUP_DIR/staticfiles_backup_$TIMESTAMP.tar.gz" ]; then
+              sudo tar -xzf "$BACKUP_DIR/staticfiles_backup_$TIMESTAMP.tar.gz" -C .
+              echo "Dossier staticfiles restauré"
+            fi
+            
+          else
+            echo "Nouveau déploiement - Clonage du repository..."
+            
+            # Sauvegarder l'ancienne version si elle existe
+            if [ "$(ls -A)" ]; then
+              sudo tar -czf "$BACKUP_DIR/backup_$TIMESTAMP.tar.gz" -C $PROJECT_DIR .
+              echo "Backup créé: backup_$TIMESTAMP.tar.gz"
+            fi
+            
+            # Nettoyer le répertoire
+            sudo rm -rf *
+            
+            # Cloner le nouveau code
+            sudo git clone https://github.com/${{ github.repository }}.git .
+          fi
           
-          # Cloner le nouveau code
-          sudo git clone https://github.com/${{ github.repository }}.git .
+          # Créer l'environnement virtuel s'il n'existe pas
+          if [ ! -d "venv" ]; then
+            sudo python3 -m venv venv
+            echo "Environnement virtuel créé"
+          fi
           
-          # Créer l'environnement virtuel
-          sudo python3 -m venv venv
+          # Configurer les permissions de l'environnement virtuel
           sudo chown -R $USER:$USER venv
           
-          # Activer l'environnement virtuel et installer les dépendances
+          # Activer l'environnement virtuel et installer/mettre à jour les dépendances
           source venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
           
-          # Configurer les variables d'environnement
-          sudo cp .env.example .env || true
+          # Configurer les variables d'environnement si le fichier n'existe pas
+          if [ ! -f ".env" ]; then
+            sudo cp .env.example .env
+            echo "Fichier .env créé à partir de .env.example"
+          fi
           
           # Appliquer les migrations
           python manage.py migrate
