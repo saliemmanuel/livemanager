@@ -14,7 +14,13 @@ urlpatterns = [
     path("logout/", views.logout_view, name="logout"),
     # Dashboard utilisateur
     path("dashboard/", views.dashboard, name="dashboard"),
+    path("profile/", views.profile, name="profile"),
     path("create-live/", views.create_live, name="create_live"),
+    # Gestion des clés de streaming
+    path("add-stream-key/", views.add_stream_key, name="add_stream_key"),
+    path("edit-stream-key/<int:key_id>/", views.edit_stream_key, name="edit_stream_key"),
+    path("delete-stream-key/<int:key_id>/", views.delete_stream_key, name="delete_stream_key"),
+    path("toggle-stream-key/<int:key_id>/", views.toggle_stream_key, name="toggle_stream_key"),
     # Actions sur les lives
     path("live/<int:live_id>/start/", views.start_live, name="start_live"),
     path("live/<int:live_id>/stop/", views.stop_live, name="stop_live"),

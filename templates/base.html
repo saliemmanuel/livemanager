@@ -68,6 +68,9 @@
                         <a href="{% url 'dashboard' %}" class="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
                             📊 Mon Dashboard
                         </a>
+                        <a href="{% url 'profile' %}" class="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                            👤 Mon Profil
+                        </a>
                         <form method="post" action="{% url 'logout' %}" class="inline">
                             {% csrf_token %}
                             <button type="submit" class="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none cursor-pointer transition-colors">

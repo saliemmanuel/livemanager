@@ -9,8 +9,8 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.urls import reverse
 from django.db.models import Q
-from .models import User, Live
-from .forms import UserRegistrationForm, LiveForm
+from .models import User, Live, StreamKey
+from .forms import UserRegistrationForm, LiveForm, StreamKeyForm
 from django.views.decorators.csrf import csrf_exempt
 
 
@@ -64,6 +64,73 @@ def dashboard(request):
 
 
 @login_required
+def profile(request):
+    """Page de profil utilisateur avec gestion des clés de streaming."""
+    user_stream_keys = StreamKey.objects.filter(user=request.user).order_by("-created_at")
+    
+    context = {
+        "user_stream_keys": user_stream_keys,
+    }
+    
+    return render(request, "streams/profile.html", context)
+
+
+@login_required
+def add_stream_key(request):
+    """Ajouter une nouvelle clé de streaming."""
+    if request.method == "POST":
+        form = StreamKeyForm(request.POST, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Clé de streaming ajoutée avec succès !")
+            return redirect("profile")
+    else:
+        form = StreamKeyForm(user=request.user)
+    
+    return render(request, "streams/add_stream_key.html", {"form": form})
+
+
+@login_required
+def edit_stream_key(request, key_id):
+    """Modifier une clé de streaming existante."""
+    stream_key = get_object_or_404(StreamKey, id=key_id, user=request.user)
+    
+    if request.method == "POST":
+        form = StreamKeyForm(request.POST, instance=stream_key, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Clé de streaming modifiée avec succès !")
+            return redirect("profile")
+    else:
+        form = StreamKeyForm(instance=stream_key, user=request.user)
+    
+    return render(request, "streams/edit_stream_key.html", {"form": form, "stream_key": stream_key})
+
+
+@login_required
+@require_POST
+def delete_stream_key(request, key_id):
+    """Supprimer une clé de streaming."""
+    stream_key = get_object_or_404(StreamKey, id=key_id, user=request.user)
+    stream_key.delete()
+    messages.success(request, "Clé de streaming supprimée avec succès !")
+    return redirect("profile")
+
+
+@login_required
+@require_POST
+def toggle_stream_key(request, key_id):
+    """Activer/désactiver une clé de streaming."""
+    stream_key = get_object_or_404(StreamKey, id=key_id, user=request.user)
+    stream_key.is_active = not stream_key.is_active
+    stream_key.save()
+    
+    status = "activée" if stream_key.is_active else "désactivée"
+    messages.success(request, f"Clé de streaming {status} avec succès !")
+    return redirect("profile")
+
+
+@login_required
 def create_live(request):
     """Création d'un nouveau live avec compression vidéo."""
     if not request.user.is_approved:
@@ -71,7 +138,7 @@ def create_live(request):
         return redirect("dashboard")
 
     if request.method == "POST":
-        form = LiveForm(request.POST, request.FILES)
+        form = LiveForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             try:
                 live = form.save(commit=False)
@@ -231,7 +298,7 @@ def create_live(request):
                     status=400,
                 )
     else:
-        form = LiveForm()
+        form = LiveForm(user=request.user)
 
     return render(request, "streams/create_live.html", {"form": form})
 
