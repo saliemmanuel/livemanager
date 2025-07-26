@@ -345,16 +345,24 @@ def start_live(request, live_id):
     """Démarrage manuel d'un live."""
     live = get_object_or_404(Live, id=live_id, user=request.user)
 
+    print(f"[DEBUG] Tentative de démarrage du live {live.id}")
+    print(f"[DEBUG] Statut du live: {live.status}")
+    print(f"[DEBUG] Utilisateur approuvé: {live.user.is_approved}")
+    print(f"[DEBUG] can_start: {live.can_start}")
+
     if not live.can_start:
+        print(f"[DEBUG] Live ne peut pas être démarré")
         return JsonResponse({"success": False, "message": "Live non démarré"})
 
     if not live.stream_key:
+        print(f"[DEBUG] Clé de streaming manquante")
         return JsonResponse({"success": False, "message": "Clé de streaming manquante"})
 
     try:
         # Construire la commande FFmpeg
         video_path = os.path.join("media", live.video_file.name)
         if not os.path.exists(video_path):
+            print(f"[DEBUG] Fichier vidéo non trouvé: {video_path}")
             return JsonResponse(
                 {"success": False, "message": "Fichier vidéo non trouvé"}
             )
