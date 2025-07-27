@@ -139,41 +139,70 @@ def toggle_stream_key(request, key_id):
 
 @login_required
 def create_live(request):
-    """Création d'un nouveau live avec compression vidéo ou upload rsync."""
+    """Création d'un nouveau live avec upload HTTP."""
     if not request.user.is_approved:
         messages.error(request, "Vous devez être approuvé pour créer un live.")
         return redirect("dashboard")
 
     if request.method == "POST":
         print(f"[DEBUG] Création de live - Utilisateur: {request.user.username}")
+        print(f"[DEBUG] Méthode: {request.method}")
+        print(f"[DEBUG] Content-Type: {request.content_type}")
         print(f"[DEBUG] Fichiers reçus: {list(request.FILES.keys())}")
+        print(f"[DEBUG] Données POST: {list(request.POST.keys())}")
+
+        # Vérifier la taille du fichier avant traitement
+        if 'video_file' in request.FILES:
+            video_file = request.FILES['video_file']
+            print(f"[DEBUG] Fichier vidéo: {video_file.name}")
+            print(f"[DEBUG] Taille du fichier: {video_file.size} bytes")
+            print(f"[DEBUG] Type MIME: {video_file.content_type}")
+            
+            # Vérifier la taille maximale (500MB)
+            max_size = 524288000  # 500MB
+            if video_file.size > max_size:
+                error_msg = f"Fichier trop volumineux. Taille maximale: 500MB, reçu: {video_file.size / (1024*1024):.1f}MB"
+                print(f"[DEBUG] {error_msg}")
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return JsonResponse({"success": False, "message": error_msg})
+                messages.error(request, error_msg)
+                return redirect("dashboard")
 
         form = LiveForm(request.POST, request.FILES, user=request.user)
+        print(f"[DEBUG] Formulaire valide: {form.is_valid()}")
+        
         if form.is_valid():
-            print("[DEBUG] Formulaire valide")
+            print("[DEBUG] Formulaire valide - traitement en cours")
             try:
                 live = form.save(commit=False)
                 live.user = request.user
+                print(f"[DEBUG] Live créé pour utilisateur: {live.user.username}")
 
                 if "video_file" in request.FILES:
                     video_file = request.FILES["video_file"]
-                    print(
-                        f"[DEBUG] Fichier vidéo reçu: {video_file.name}, "
-                        f"taille: {video_file.size}"
-                    )
+                    print(f"[DEBUG] Sauvegarde du fichier vidéo: {video_file.name}")
 
                     # Upload HTTP classique (plus simple et fiable)
                     live.video_file = video_file
                     live.save()
-
-                    print(f"[DEBUG] Vidéo sauvegardée: {live.video_file.name}")
-
+                    
+                    print(f"[DEBUG] Vidéo sauvegardée avec succès: {live.video_file.name}")
+                    print(f"[DEBUG] Chemin complet: {live.video_file.path}")
+                    
+                    # Vérifier que le fichier existe physiquement
+                    import os
+                    if os.path.exists(live.video_file.path):
+                        print(f"[DEBUG] Fichier confirmé sur le disque: {live.video_file.path}")
+                    else:
+                        print(f"[DEBUG] ATTENTION: Fichier non trouvé sur le disque: {live.video_file.path}")
+                    
                     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                         return JsonResponse(
                             {
                                 "success": True,
                                 "message": "Vidéo uploadée avec succès !",
                                 "redirect_url": reverse("dashboard"),
+                                "file_path": live.video_file.name,
                             }
                         )
                     messages.success(request, "Vidéo uploadée avec succès !")
@@ -181,30 +210,38 @@ def create_live(request):
 
                 else:
                     # Pas de fichier vidéo
+                    error_msg = "Aucun fichier vidéo fourni"
+                    print(f"[DEBUG] {error_msg}")
                     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                         return JsonResponse(
-                            {"success": False, "message": "Aucun fichier vidéo fourni"}
+                            {"success": False, "message": error_msg}
                         )
 
-                    messages.error(request, "Aucun fichier vidéo fourni")
+                    messages.error(request, error_msg)
                     return redirect("dashboard")
 
             except Exception as e:
+                import traceback
                 print(f"[DEBUG] Erreur générale: {str(e)}")
+                print(f"[DEBUG] Traceback: {traceback.format_exc()}")
+                
                 if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                     return JsonResponse(
-                        {"success": False, "message": f"Erreur: {str(e)}"}
+                        {"success": False, "message": f"Erreur lors de l'upload: {str(e)}"}
                     )
 
-                messages.error(request, f"Erreur: {str(e)}")
+                messages.error(request, f"Erreur lors de l'upload: {str(e)}")
                 return redirect("dashboard")
         else:
             print(f"[DEBUG] Formulaire invalide: {form.errors}")
+            print(f"[DEBUG] Erreurs détaillées: {dict(form.errors)}")
+            
             if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                 return JsonResponse(
                     {
                         "success": False,
                         "message": f"Erreur de validation: {form.errors}",
+                        "errors": dict(form.errors),
                     }
                 )
 

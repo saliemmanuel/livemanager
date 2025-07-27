@@ -16,7 +16,7 @@ DEBUG = config("DEBUG", default=True, cast=bool)
 
 ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS",
-    default="localhost,127.0.0.1",
+    default="localhost,127.0.0.1,testserver",
     cast=lambda v: [s.strip() for s in v.split(",")],
 )
 
@@ -127,6 +127,13 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 # File upload settings
 FILE_UPLOAD_MAX_MEMORY_SIZE = 524288000  # 500MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 524288000  # 500MB
+FILE_UPLOAD_TEMP_DIR = None  # Utiliser le répertoire temporaire par défaut
+FILE_UPLOAD_PERMISSIONS = 0o644  # Permissions pour les fichiers uploadés
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755  # Permissions pour les répertoires
+
+# Timeout settings pour les uploads
+FILE_UPLOAD_TIMEOUT = 300  # 5 minutes
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000  # Nombre maximum de champs
 
 # FFmpeg settings
 FFMPEG_PATH = config("FFMPEG_PATH", default="/usr/bin/ffmpeg")

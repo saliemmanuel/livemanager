@@ -123,7 +123,7 @@ Un pipeline **CI/CD (GitHub Actions)** sera mis en place pour :
    - Redémarrage automatique des services (`gunicorn`, `celery`, `supervisor`, etc.)
 
 Exemples de tâches automatisées :
-- `python manage.py test`
+- `python manage.py test` 
 - `python manage.py collectstatic --noinput`
 - `python manage.py migrate`
 - Redémarrage via : `sudo systemctl restart live-manager`

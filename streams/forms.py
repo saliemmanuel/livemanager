@@ -93,6 +93,28 @@ class LiveForm(forms.ModelForm):
         is_scheduled = cleaned_data.get("is_scheduled")
         scheduled_at = cleaned_data.get("scheduled_at")
         stream_key = cleaned_data.get("stream_key")
+        video_file = self.files.get("video_file") if self.files else None
+
+        # Vérifier que le fichier vidéo est présent
+        if not video_file:
+            raise forms.ValidationError(
+                "Un fichier vidéo est requis pour créer un live."
+            )
+
+        # Vérifier la taille du fichier
+        if video_file and video_file.size > 524288000:  # 500MB
+            raise forms.ValidationError(
+                f"Le fichier est trop volumineux. Taille maximale: 500MB, "
+                f"reçu: {video_file.size / (1024*1024):.1f}MB"
+            )
+
+        # Vérifier le type de fichier
+        allowed_types = ['video/mp4', 'video/avi', 'video/mov', 'video/wmv', 'video/flv']
+        if video_file and hasattr(video_file, 'content_type'):
+            if video_file.content_type not in allowed_types:
+                raise forms.ValidationError(
+                    f"Type de fichier non supporté. Types autorisés: {', '.join(allowed_types)}"
+                )
 
         if is_scheduled and not scheduled_at:
             raise forms.ValidationError(
