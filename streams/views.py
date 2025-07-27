@@ -165,9 +165,9 @@ def create_live(request):
                     # Upload HTTP classique (plus simple et fiable)
                     live.video_file = video_file
                     live.save()
-                    
+
                     print(f"[DEBUG] Vidéo sauvegardée: {live.video_file.name}")
-                    
+
                     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                         return JsonResponse(
                             {
