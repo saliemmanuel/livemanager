@@ -488,7 +488,8 @@ def restart_live(request, live_id):
         ]
 
         print(
-            f"[DEBUG] Relance du live {live.id} avec la commande: {' '.join(ffmpeg_cmd)}"
+            f"[DEBUG] Relance du live {live.id} avec la commande: "
+            f"{' '.join(ffmpeg_cmd)}"
         )
 
         # Démarrer le processus FFmpeg selon la plateforme
