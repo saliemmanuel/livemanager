@@ -159,10 +159,15 @@ def create_live(request):
 
                 if "video_file" in request.FILES:
                     video_file = request.FILES["video_file"]
-                    print(f"[DEBUG] Fichier vidéo reçu: {video_file.name}, taille: {video_file.size}")
+                    print(
+                        f"[DEBUG] Fichier vidéo reçu: {video_file.name}, "
+                        f"taille: {video_file.size}"
+                    )
 
                     # Upload direct avec rsync (sans compression)
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_file:
+                    with tempfile.NamedTemporaryFile(
+                        delete=False, suffix=".mp4"
+                    ) as temp_file:
                         for chunk in video_file.chunks():
                             temp_file.write(chunk)
                         temp_path = temp_file.name
@@ -173,7 +178,9 @@ def create_live(request):
                     remote_host = "185.199.108.153"
                     remote_path = "/var/www/livemanager/media/videos/"
 
-                    success, msg = upload_with_rsync(temp_path, remote_user, remote_host, remote_path)
+                    success, msg = upload_with_rsync(
+                        temp_path, remote_user, remote_host, remote_path
+                    )
                     print(f"[DEBUG] Résultat rsync: {success} - {msg}")
 
                     if success:
@@ -181,12 +188,16 @@ def create_live(request):
                         live.save()
                         os.unlink(temp_path)
                         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                            return JsonResponse({
-                                "success": True,
-                                "message": "Vidéo uploadée avec rsync !",
-                                "redirect_url": reverse("dashboard"),
-                            })
-                        messages.success(request, "Vidéo uploadée avec succès (rsync) !")
+                            return JsonResponse(
+                                {
+                                    "success": True,
+                                    "message": "Vidéo uploadée avec rsync !",
+                                    "redirect_url": reverse("dashboard"),
+                                }
+                            )
+                        messages.success(
+                            request, "Vidéo uploadée avec succès (rsync) !"
+                        )
                         return redirect("dashboard")
                     else:
                         os.unlink(temp_path)
