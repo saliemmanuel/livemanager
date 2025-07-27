@@ -177,12 +177,13 @@ def create_live(request):
                     remote_user = getattr(settings, "RSYNC_USER", "root")
                     remote_host = getattr(settings, "RSYNC_HOST", "localhost")
                     remote_path = getattr(
-                        settings, 
-                        "RSYNC_PATH", 
-                        "/var/www/livemanager/media/videos/"
+                        settings, "RSYNC_PATH", "/var/www/livemanager/media/videos/"
                     )
 
-                    print(f"[DEBUG] Configuration rsync: {remote_user}@{remote_host}:{remote_path}")
+                    print(
+                        f"[DEBUG] Configuration rsync: {remote_user}@{remote_host}:"
+                        f"{remote_path}"
+                    )
 
                     success, msg = upload_with_rsync(
                         temp_path, remote_user, remote_host, remote_path
@@ -193,7 +194,7 @@ def create_live(request):
                         live.video_file = f"videos/{video_file.name}"
                         live.save()
                         os.unlink(temp_path)  # Nettoyage du fichier temporaire
-                        
+
                         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                             return JsonResponse(
                                 {
