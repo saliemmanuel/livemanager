@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.urls import reverse
 from django.views.decorators.http import require_POST
+from django.conf import settings
 from .forms import UserRegistrationForm, LiveForm, StreamKeyForm
 from .models import User, Live, StreamKey
 
@@ -368,8 +369,9 @@ def start_live(request, live_id):
         rtmp_url = live.stream_key.key
 
         # Commande FFmpeg pour le streaming (sans setsid pour compatibilité Windows)
+        ffmpeg_path = getattr(settings, "FFMPEG_PATH", "/usr/bin/ffmpeg")
         ffmpeg_cmd = [
-            "ffmpeg",
+            ffmpeg_path,
             "-re",  # Lire à la vitesse réelle
             "-stream_loop",
             "-1",  # Boucle infinie
