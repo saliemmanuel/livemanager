@@ -1,6 +1,5 @@
 import os
 import sys
-import tempfile
 import subprocess
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -11,7 +10,6 @@ from django.views.decorators.http import require_POST
 from django.conf import settings
 from .forms import UserRegistrationForm, LiveForm, StreamKeyForm
 from .models import User, Live, StreamKey
-from .upload_rsync import upload_with_rsync
 
 
 def is_admin(user):
@@ -164,97 +162,22 @@ def create_live(request):
                         f"taille: {video_file.size}"
                     )
 
-                    # Upload avec rsync (configuration flexible)
-                    with tempfile.NamedTemporaryFile(
-                        delete=False, suffix=".mp4"
-                    ) as temp_file:
-                        for chunk in video_file.chunks():
-                            temp_file.write(chunk)
-                        temp_path = temp_file.name
-                        print(f"[DEBUG] Fichier temporaire créé: {temp_path}")
-
-                    # Configuration rsync depuis les settings ou valeurs par défaut
-                    remote_user = getattr(settings, "RSYNC_USER", "root")
-                    remote_host = getattr(settings, "RSYNC_HOST", "localhost")
-                    remote_path = getattr(
-                        settings, "RSYNC_PATH", "/var/www/livemanager/media/videos/"
-                    )
-
-                    print(
-                        f"[DEBUG] Configuration rsync: {remote_user}@{remote_host}:"
-                        f"{remote_path}"
-                    )
-
-                    success, msg = upload_with_rsync(
-                        temp_path, remote_user, remote_host, remote_path
-                    )
-                    print(f"[DEBUG] Résultat rsync: {success} - {msg}")
-
-                    if success:
-                        try:
-                            # Sauvegarder le live avec le fichier vidéo
-                            live.video_file = f"videos/{video_file.name}"
-                            live.save()
-                            print(f"[DEBUG] Live sauvegardé avec succès: {live.id}")
-
-                            # Nettoyage du fichier temporaire
-                            os.unlink(temp_path)
-                            print(f"[DEBUG] Fichier temporaire supprimé: {temp_path}")
-
-                            # Réponse AJAX
-                            if (
-                                request.headers.get("X-Requested-With")
-                                == "XMLHttpRequest"
-                            ):
-                                response_data = {
-                                    "success": True,
-                                    "message": "Vidéo uploadée avec rsync !",
-                                    "redirect_url": reverse("dashboard"),
-                                }
-                                print(f"[DEBUG] Réponse AJAX: {response_data}")
-                                return JsonResponse(response_data)
-
-                            # Réponse normale
-                            messages.success(request, "Vidéo uploadée avec rsync !")
-                            return redirect("dashboard")
-
-                        except Exception as save_error:
-                            print(
-                                f"[DEBUG] Erreur lors de la sauvegarde: "
-                                f"{str(save_error)}"
-                            )
-                            os.unlink(temp_path)  # Nettoyage en cas d'erreur
-
-                            if (
-                                request.headers.get("X-Requested-With")
-                                == "XMLHttpRequest"
-                            ):
-                                return JsonResponse(
-                                    {
-                                        "success": False,
-                                        "message": f"Erreur lors de la sauvegarde: "
-                                        f"{str(save_error)}",
-                                    }
-                                )
-                            messages.error(
-                                request,
-                                f"Erreur lors de la sauvegarde: {str(save_error)}",
-                            )
-                            return redirect("create_live")
-                    else:
-                        # Échec de l'upload rsync
-                        os.unlink(temp_path)  # Nettoyage du fichier temporaire
-                        print(f"[DEBUG] Échec upload rsync: {msg}")
-
-                        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                            return JsonResponse(
-                                {
-                                    "success": False,
-                                    "message": f"Erreur upload rsync: {msg}",
-                                }
-                            )
-                        messages.error(request, f"Erreur upload rsync: {msg}")
-                        return redirect("create_live")
+                    # Upload HTTP classique (plus simple et fiable)
+                    live.video_file = video_file
+                    live.save()
+                    
+                    print(f"[DEBUG] Vidéo sauvegardée: {live.video_file.name}")
+                    
+                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                        return JsonResponse(
+                            {
+                                "success": True,
+                                "message": "Vidéo uploadée avec succès !",
+                                "redirect_url": reverse("dashboard"),
+                            }
+                        )
+                    messages.success(request, "Vidéo uploadée avec succès !")
+                    return redirect("dashboard")
 
                 else:
                     # Pas de fichier vidéo

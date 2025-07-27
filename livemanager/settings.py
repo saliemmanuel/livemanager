@@ -130,8 +130,3 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 524288000  # 500MB
 
 # FFmpeg settings
 FFMPEG_PATH = config("FFMPEG_PATH", default="/usr/bin/ffmpeg")
-
-# Rsync settings for file uploads
-RSYNC_USER = config("RSYNC_USER", default="root")
-RSYNC_HOST = config("RSYNC_HOST", default="localhost")
-RSYNC_PATH = config("RSYNC_PATH", default="/var/www/livemanager/media/videos/")
