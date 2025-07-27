@@ -353,7 +353,7 @@ function uploadFileWithRetry(file, onProgress, onDone, onError, maxRetries = 3) 
         xhr.open('POST', window.location.href);
         xhr.setRequestHeader('X-CSRFToken', document.querySelector('[name=csrfmiddlewaretoken]').value);
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.timeout = 300000; // 5 minutes
+        xhr.timeout = 1800000; // 30 minutes - Augmenté pour les gros fichiers
         uploadStartTime = Date.now();
         xhr.send(formData);
     }

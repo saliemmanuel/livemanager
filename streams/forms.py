@@ -102,10 +102,10 @@ class LiveForm(forms.ModelForm):
             )
 
         # Vérifier la taille du fichier
-        if video_file and video_file.size > 524288000:  # 500MB
+        if video_file and video_file.size > 1048576000:  # 1GB
             raise forms.ValidationError(
-                f"Le fichier est trop volumineux. Taille maximale: 500MB, "
-                f"reçu: {video_file.size / (1024*1024):.1f}MB"
+                f"Le fichier est trop volumineux. Taille maximale: 1GB, "
+                f"reçu: {video_file.size / (1024*1024*1024):.2f}GB"
             )
 
         # Vérifier le type de fichier

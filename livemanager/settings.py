@@ -124,16 +124,26 @@ EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 
-# File upload settings
-FILE_UPLOAD_MAX_MEMORY_SIZE = 524288000  # 500MB
-DATA_UPLOAD_MAX_MEMORY_SIZE = 524288000  # 500MB
+# File upload settings - Configuration optimisée pour les gros fichiers vidéo
+FILE_UPLOAD_MAX_MEMORY_SIZE = 1048576000  # 1GB - Augmenté pour les gros fichiers
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1048576000  # 1GB - Augmenté pour les gros fichiers
 FILE_UPLOAD_TEMP_DIR = None  # Utiliser le répertoire temporaire par défaut
 FILE_UPLOAD_PERMISSIONS = 0o644  # Permissions pour les fichiers uploadés
 FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755  # Permissions pour les répertoires
 
-# Timeout settings pour les uploads
-FILE_UPLOAD_TIMEOUT = 300  # 5 minutes
+# Timeout settings pour les uploads - Augmentés pour les gros fichiers
+FILE_UPLOAD_TIMEOUT = 1800  # 30 minutes - Augmenté pour les gros fichiers
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000  # Nombre maximum de champs
+
+# Configuration serveur pour les uploads lents
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1048576000  # 1GB
+FILE_UPLOAD_HANDLERS = [
+    "django.core.files.uploadhandler.MemoryFileUploadHandler",
+    "django.core.files.uploadhandler.TemporaryFileUploadHandler",
+]
+
+# Configuration pour éviter les timeouts de connexion
+CONN_MAX_AGE = 600  # 10 minutes de connexion persistante
 
 # FFmpeg settings
 FFMPEG_PATH = config("FFMPEG_PATH", default="/usr/bin/ffmpeg")
