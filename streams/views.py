@@ -11,6 +11,7 @@ from django.views.decorators.http import require_POST
 from django.conf import settings
 from .forms import UserRegistrationForm, LiveForm, StreamKeyForm
 from .models import User, Live, StreamKey
+from .upload_rsync import upload_with_rsync
 
 
 def is_admin(user):
@@ -140,7 +141,7 @@ def toggle_stream_key(request, key_id):
 
 @login_required
 def create_live(request):
-    """Création d'un nouveau live avec compression vidéo."""
+    """Création d'un nouveau live avec compression vidéo ou upload rsync."""
     if not request.user.is_approved:
         messages.error(request, "Vous devez être approuvé pour créer un live.")
         return redirect("dashboard")
@@ -156,157 +157,41 @@ def create_live(request):
                 live = form.save(commit=False)
                 live.user = request.user
 
-                # Upload normal via navigateur
                 if "video_file" in request.FILES:
                     video_file = request.FILES["video_file"]
-                    print(
-                        f"[DEBUG] Fichier vidéo reçu: {video_file.name}, "
-                        f"taille: {video_file.size}"
-                    )
+                    print(f"[DEBUG] Fichier vidéo reçu: {video_file.name}, taille: {video_file.size}")
 
-                    # Option temporaire : désactiver la compression si FFmpeg n'est pas
-                    # disponible
-                    skip_compression = False
-                    try:
-                        # Tester si FFmpeg est disponible
-                        subprocess.run(
-                            ["ffmpeg", "-version"], capture_output=True, timeout=5
-                        )
-                    except (FileNotFoundError, subprocess.TimeoutExpired):
-                        print(
-                            "[DEBUG] FFmpeg non disponible, upload direct sans "
-                            "compression"
-                        )
-                        skip_compression = True
-
-                    if skip_compression:
-                        # Upload direct sans compression
-                        output_path = os.path.join("media", "videos", video_file.name)
-                        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-                        with open(output_path, "wb") as f:
-                            for chunk in video_file.chunks():
-                                f.write(chunk)
-
-                        live.video_file = f"videos/{video_file.name}"
-                        live.save()
-                        print(f"[DEBUG] Live sauvegardé sans compression: {live.id}")
-
-                        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                            return JsonResponse(
-                                {
-                                    "success": True,
-                                    "message": ("Video uploadée ! (sans compression)"),
-                                    "redirect_url": reverse("dashboard"),
-                                }
-                            )
-
-                        messages.success(
-                            request, "Vidéo uploadée avec succès ! (sans compression)"
-                        )
-                        return redirect("dashboard")
-
-                    # Créer un fichier temporaire pour la vidéo compressée
-                    with tempfile.NamedTemporaryFile(
-                        delete=False, suffix=".mp4"
-                    ) as temp_file:
-                        # Sauvegarder le fichier uploadé
+                    # Upload direct avec rsync (sans compression)
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_file:
                         for chunk in video_file.chunks():
                             temp_file.write(chunk)
-                        temp_file_path = temp_file.name
-                        print(f"[DEBUG] Fichier temporaire créé: {temp_file_path}")
+                        temp_path = temp_file.name
+                        print(f"[DEBUG] Fichier temporaire créé: {temp_path}")
 
-                    try:
-                        # Décompresser la vidéo avec FFmpeg
-                        output_path = os.path.join(
-                            "media", "videos", f"decompressed_{video_file.name}"
-                        )
-                        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-                        print(f"[DEBUG] Chemin de sortie: {output_path}")
+                    # Config rsync (à adapter selon votre serveur)
+                    remote_user = "root"
+                    remote_host = "185.199.108.153"
+                    remote_path = "/var/www/livemanager/media/videos/"
 
-                        # Commande FFmpeg pour décompresser et optimiser
-                        ffmpeg_cmd = [
-                            "ffmpeg",
-                            "-i",
-                            temp_file_path,
-                            "-c:v",
-                            "libx264",  # Codec vidéo H.264
-                            "-c:a",
-                            "aac",  # Codec audio AAC
-                            "-preset",
-                            "medium",  # Équilibre qualité/performance
-                            "-crf",
-                            "23",  # Qualité constante (18-28 recommandé)
-                            "-movflags",
-                            "+faststart",  # Optimisation web
-                            "-y",  # Écraser si existe
-                            output_path,
-                        ]
-                        print(f"[DEBUG] Commande FFmpeg: {' '.join(ffmpeg_cmd)}")
+                    success, msg = upload_with_rsync(temp_path, remote_user, remote_host, remote_path)
+                    print(f"[DEBUG] Résultat rsync: {success} - {msg}")
 
-                        # Exécuter FFmpeg
-                        result = subprocess.run(
-                            ffmpeg_cmd,
-                            capture_output=True,
-                            text=True,
-                            timeout=300,  # 5 minutes max
-                        )
-                        print(f"[DEBUG] FFmpeg returncode: {result.returncode}")
-                        if result.returncode != 0:
-                            print(f"[DEBUG] FFmpeg stderr: {result.stderr}")
-
-                        if result.returncode == 0:
-                            # Sauvegarder le chemin de la vidéo décompressée
-                            live.video_file = f"videos/decompressed_{video_file.name}"
-                            live.save()
-                            print(f"[DEBUG] Live sauvegardé avec succès: {live.id}")
-
-                            # Nettoyer le fichier temporaire
-                            os.unlink(temp_file_path)
-                            print("[DEBUG] Fichier temporaire supprimé")
-
-                            if (
-                                request.headers.get("X-Requested-With")
-                                == "XMLHttpRequest"
-                            ):
-                                print("[DEBUG] Réponse AJAX de succès")
-                                return JsonResponse(
-                                    {
-                                        "success": True,
-                                        "message": (
-                                            "Vidéo compressée et live créé "
-                                            "avec succès !"
-                                        ),
-                                        "redirect_url": reverse("dashboard"),
-                                    }
-                                )
-
-                            messages.success(
-                                request,
-                                "Vidéo compressée et live créé avec succès !",
-                            )
-                            return redirect("dashboard")
-                        else:
-                            raise Exception(f"Erreur FFmpeg: {result.stderr}")
-
-                    except Exception as e:
-                        print(f"[DEBUG] Erreur lors de la compression: {str(e)}")
-                        # Nettoyer le fichier temporaire en cas d'erreur
-                        if os.path.exists(temp_file_path):
-                            os.unlink(temp_file_path)
-
+                    if success:
+                        live.video_file = f"videos/{video_file.name}"
+                        live.save()
+                        os.unlink(temp_path)
                         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                            return JsonResponse(
-                                {
-                                    "success": False,
-                                    "message": f"Erreur compression: {str(e)}",
-                                }
-                            )
-
-                        messages.error(
-                            request, f"Erreur lors de la compression: {str(e)}"
-                        )
+                            return JsonResponse({
+                                "success": True,
+                                "message": "Vidéo uploadée avec rsync !",
+                                "redirect_url": reverse("dashboard"),
+                            })
+                        messages.success(request, "Vidéo uploadée avec succès (rsync) !")
                         return redirect("dashboard")
+                    else:
+                        os.unlink(temp_path)
+                        messages.error(request, f"Erreur upload rsync: {msg}")
+                        return redirect("create_live")
 
                 else:
                     # Pas de fichier vidéo
