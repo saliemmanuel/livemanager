@@ -87,9 +87,7 @@ def add_stream_key(request):
         if form.is_valid():
             try:
                 stream_key = form.save()
-                print(
-                    f"[DEBUG] Clé créée: {stream_key.id} - {stream_key.name}"
-                )
+                print(f"[DEBUG] Clé créée: {stream_key.id} - {stream_key.name}")
                 messages.success(request, "Clé de streaming ajoutée avec succès !")
                 return redirect("profile")
             except Exception as e:
