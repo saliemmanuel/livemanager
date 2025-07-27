@@ -83,6 +83,13 @@
                                         ⏹️ Arrêter
                                     </button>
                                 {% endif %}
+
+                                {% if live.can_restart %}
+                                    <button onclick="restartLive({{ live.id }})" 
+                                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">
+                                        🔄 Relancer
+                                    </button>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -158,6 +165,26 @@ function stopLive(liveId) {
         .then(data => {
             if (data.success) {
                 alert('Live en cours d\'arrêt !');
+                location.reload();
+            } else {
+                alert('Erreur: ' + data.message);
+            }
+        });
+    }
+}
+
+function restartLive(liveId) {
+    if (confirm('Relancer ce live ?')) {
+        fetch(`/live/${liveId}/restart/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Live en cours de relance !');
                 location.reload();
             } else {
                 alert('Erreur: ' + data.message);

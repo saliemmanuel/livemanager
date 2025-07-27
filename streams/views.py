@@ -421,6 +421,111 @@ def stop_live(request, live_id):
 
 
 @login_required
+@require_POST
+def restart_live(request, live_id):
+    """Relancer un live terminé."""
+    live = get_object_or_404(Live, id=live_id, user=request.user)
+
+    if not live.can_restart:
+        return JsonResponse(
+            {"success": False, "message": "Ce live ne peut pas être relancé"}
+        )
+
+    try:
+        # Vérifier que le fichier vidéo existe
+        video_path = os.path.join("media", live.video_file.name)
+        if not os.path.exists(video_path):
+            return JsonResponse(
+                {"success": False, "message": "Fichier vidéo introuvable"}
+            )
+
+        # Vérifier que la clé de streaming existe
+        if not live.stream_key:
+            return JsonResponse(
+                {"success": False, "message": "Aucune clé de streaming configurée"}
+            )
+
+        rtmp_url = live.stream_key.key
+        ffmpeg_path = getattr(settings, "FFMPEG_PATH", "/usr/bin/ffmpeg")
+
+        # Commande FFmpeg pour relancer le live
+        ffmpeg_cmd = [
+            ffmpeg_path,
+            "-re",
+            "-stream_loop",
+            "-1",
+            "-i",
+            video_path,
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-b:v",
+            "500k",
+            "-maxrate",
+            "800k",
+            "-bufsize",
+            "1200k",
+            "-s",
+            "640x360",
+            "-g",
+            "60",
+            "-keyint_min",
+            "60",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "96k",
+            "-f",
+            "flv",
+            "-reconnect",
+            "1",
+            "-reconnect_streamed",
+            "1",
+            "-reconnect_delay_max",
+            "2",
+            rtmp_url,
+        ]
+
+        print(
+            f"[DEBUG] Relance du live {live.id} avec la commande: {' '.join(ffmpeg_cmd)}"
+        )
+
+        # Démarrer le processus FFmpeg selon la plateforme
+        if sys.platform.startswith("win"):
+            process = subprocess.Popen(
+                ffmpeg_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+            )
+        else:
+            process = subprocess.Popen(
+                ffmpeg_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                start_new_session=True,
+            )
+
+        # Enregistrer le PID et mettre à jour le statut
+        live.ffmpeg_pid = process.pid
+        live.status = "running"
+        live.save()
+
+        print(f"[DEBUG] Live {live.id} relancé avec succès (PID: {process.pid})")
+
+        return JsonResponse({"success": True, "message": "Live relancé avec succès"})
+
+    except Exception as e:
+        print(f"[DEBUG] Erreur lors de la relance du live {live.id}: {str(e)}")
+        live.status = "failed"
+        live.save()
+        return JsonResponse(
+            {"success": False, "message": f"Erreur lors de la relance: {str(e)}"}
+        )
+
+
+@login_required
 def check_approval_status(request):
     """Vérifier le statut d'approbation de l'utilisateur (AJAX)."""
     return JsonResponse(

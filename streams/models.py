@@ -100,3 +100,8 @@ class Live(models.Model):
     def can_start(self):
         """Vérifie si le live peut être démarré."""
         return self.status == "pending" and self.user.is_approved
+
+    @property
+    def can_restart(self):
+        """Vérifie si le live peut être relancé (terminé ou échoué)."""
+        return self.status in ["completed", "failed"] and self.user.is_approved

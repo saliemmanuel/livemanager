@@ -34,6 +34,7 @@ urlpatterns = [
     # Actions sur les lives
     path("live/<int:live_id>/start/", views.start_live, name="start_live"),
     path("live/<int:live_id>/stop/", views.stop_live, name="stop_live"),
+    path("live/<int:live_id>/restart/", views.restart_live, name="restart_live"),
     # Vérification du statut
     path(
         "check-approval-status/",
