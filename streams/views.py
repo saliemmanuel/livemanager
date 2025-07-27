@@ -233,12 +233,12 @@ def create_live(request):
                                     {
                                         "success": False,
                                         "message": f"Erreur lors de la sauvegarde: "
-                                        f"{str(save_error)}"
+                                        f"{str(save_error)}",
                                     }
                                 )
                             messages.error(
                                 request,
-                                f"Erreur lors de la sauvegarde: {str(save_error)}"
+                                f"Erreur lors de la sauvegarde: {str(save_error)}",
                             )
                             return redirect("create_live")
                     else:
