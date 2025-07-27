@@ -11,14 +11,13 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 # Configuration Django
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "livemanager.settings")
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'livemanager.settings')
 
-import django
-
+import django  # noqa: E402
 django.setup()
 
-from django.conf import settings
-from streams.upload_rsync import upload_with_rsync
+from django.conf import settings  # noqa: E402
+from streams.upload_rsync import upload_with_rsync  # noqa: E402
 
 
 def test_rsync_server():

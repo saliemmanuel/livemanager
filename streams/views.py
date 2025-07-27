@@ -220,7 +220,8 @@ def create_live(request):
 
                         except Exception as save_error:
                             print(
-                                f"[DEBUG] Erreur lors de la sauvegarde: {str(save_error)}"
+                                f"[DEBUG] Erreur lors de la sauvegarde: "
+                                f"{str(save_error)}"
                             )
                             os.unlink(temp_path)  # Nettoyage en cas d'erreur
 
@@ -231,12 +232,13 @@ def create_live(request):
                                 return JsonResponse(
                                     {
                                         "success": False,
-                                        "message": f"Erreur lors de la sauvegarde: {str(save_error)}",
+                                        "message": f"Erreur lors de la sauvegarde: "
+                                        f"{str(save_error)}"
                                     }
                                 )
                             messages.error(
                                 request,
-                                f"Erreur lors de la sauvegarde: {str(save_error)}",
+                                f"Erreur lors de la sauvegarde: {str(save_error)}"
                             )
                             return redirect("create_live")
                     else:

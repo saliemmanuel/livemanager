@@ -12,7 +12,8 @@ def upload_with_rsync(
     Retourne (True, message) ou (False, erreur)
     """
     print(
-        f"[RSYNC] Début upload: {local_file} -> {remote_user}@{remote_host}:{remote_path}"
+        f"[RSYNC] Début upload: {local_file} -> "
+        f"{remote_user}@{remote_host}:{remote_path}"
     )
 
     if not os.path.exists(local_file):
@@ -57,7 +58,7 @@ def upload_with_rsync(
                 print(f"[RSYNC] ERREUR: {error_msg}")
 
                 if attempt < max_retries:
-                    print(f"[RSYNC] Nouvelle tentative dans 5 secondes...")
+                    print("[RSYNC] Nouvelle tentative dans 5 secondes...")
                     time.sleep(5)
                 else:
                     return False, error_msg
@@ -67,7 +68,7 @@ def upload_with_rsync(
             print(f"[RSYNC] TIMEOUT: {error_msg}")
 
             if attempt < max_retries:
-                print(f"[RSYNC] Nouvelle tentative dans 5 secondes...")
+                print("[RSYNC] Nouvelle tentative dans 5 secondes...")
                 time.sleep(5)
             else:
                 return False, "Timeout après toutes les tentatives"
