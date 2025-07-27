@@ -191,22 +191,66 @@ def create_live(request):
                     print(f"[DEBUG] Résultat rsync: {success} - {msg}")
 
                     if success:
-                        live.video_file = f"videos/{video_file.name}"
-                        live.save()
-                        os.unlink(temp_path)  # Nettoyage du fichier temporaire
+                        try:
+                            # Sauvegarder le live avec le fichier vidéo
+                            live.video_file = f"videos/{video_file.name}"
+                            live.save()
+                            print(f"[DEBUG] Live sauvegardé avec succès: {live.id}")
 
-                        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                            return JsonResponse(
-                                {
+                            # Nettoyage du fichier temporaire
+                            os.unlink(temp_path)
+                            print(f"[DEBUG] Fichier temporaire supprimé: {temp_path}")
+
+                            # Réponse AJAX
+                            if (
+                                request.headers.get("X-Requested-With")
+                                == "XMLHttpRequest"
+                            ):
+                                response_data = {
                                     "success": True,
                                     "message": "Vidéo uploadée avec rsync !",
                                     "redirect_url": reverse("dashboard"),
                                 }
+                                print(f"[DEBUG] Réponse AJAX: {response_data}")
+                                return JsonResponse(response_data)
+
+                            # Réponse normale
+                            messages.success(request, "Vidéo uploadée avec rsync !")
+                            return redirect("dashboard")
+
+                        except Exception as save_error:
+                            print(
+                                f"[DEBUG] Erreur lors de la sauvegarde: {str(save_error)}"
                             )
-                        messages.success(request, "Vidéo uploadée avec rsync !")
-                        return redirect("dashboard")
+                            os.unlink(temp_path)  # Nettoyage en cas d'erreur
+
+                            if (
+                                request.headers.get("X-Requested-With")
+                                == "XMLHttpRequest"
+                            ):
+                                return JsonResponse(
+                                    {
+                                        "success": False,
+                                        "message": f"Erreur lors de la sauvegarde: {str(save_error)}",
+                                    }
+                                )
+                            messages.error(
+                                request,
+                                f"Erreur lors de la sauvegarde: {str(save_error)}",
+                            )
+                            return redirect("create_live")
                     else:
+                        # Échec de l'upload rsync
                         os.unlink(temp_path)  # Nettoyage du fichier temporaire
+                        print(f"[DEBUG] Échec upload rsync: {msg}")
+
+                        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                            return JsonResponse(
+                                {
+                                    "success": False,
+                                    "message": f"Erreur upload rsync: {msg}",
+                                }
+                            )
                         messages.error(request, f"Erreur upload rsync: {msg}")
                         return redirect("create_live")
 
