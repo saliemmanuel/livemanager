@@ -109,11 +109,18 @@ class LiveForm(forms.ModelForm):
             )
 
         # Vérifier le type de fichier
-        allowed_types = ['video/mp4', 'video/avi', 'video/mov', 'video/wmv', 'video/flv']
-        if video_file and hasattr(video_file, 'content_type'):
+        allowed_types = [
+            "video/mp4",
+            "video/avi",
+            "video/mov",
+            "video/wmv",
+            "video/flv",
+        ]
+        if video_file and hasattr(video_file, "content_type"):
             if video_file.content_type not in allowed_types:
                 raise forms.ValidationError(
-                    f"Type de fichier non supporté. Types autorisés: {', '.join(allowed_types)}"
+                    f"Type de fichier non supporté. "
+                    f"Types autorisés: {', '.join(allowed_types)}"
                 )
 
         if is_scheduled and not scheduled_at:
