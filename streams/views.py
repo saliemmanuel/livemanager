@@ -11,7 +11,6 @@ from django.views.decorators.http import require_POST
 from django.conf import settings
 from .forms import UserRegistrationForm, LiveForm, StreamKeyForm
 from .models import User, Live, StreamKey
-from .upload_rsync import upload_with_rsync
 
 
 def is_admin(user):
@@ -164,45 +163,22 @@ def create_live(request):
                         f"taille: {video_file.size}"
                     )
 
-                    # Upload direct avec rsync (sans compression)
-                    with tempfile.NamedTemporaryFile(
-                        delete=False, suffix=".mp4"
-                    ) as temp_file:
-                        for chunk in video_file.chunks():
-                            temp_file.write(chunk)
-                        temp_path = temp_file.name
-                        print(f"[DEBUG] Fichier temporaire créé: {temp_path}")
-
-                    # Config rsync (à adapter selon votre serveur)
-                    remote_user = "root"
-                    remote_host = "185.199.108.153"
-                    remote_path = "/var/www/livemanager/media/videos/"
-
-                    success, msg = upload_with_rsync(
-                        temp_path, remote_user, remote_host, remote_path
-                    )
-                    print(f"[DEBUG] Résultat rsync: {success} - {msg}")
-
-                    if success:
-                        live.video_file = f"videos/{video_file.name}"
-                        live.save()
-                        os.unlink(temp_path)
-                        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                            return JsonResponse(
-                                {
-                                    "success": True,
-                                    "message": "Vidéo uploadée avec rsync !",
-                                    "redirect_url": reverse("dashboard"),
-                                }
-                            )
-                        messages.success(
-                            request, "Vidéo uploadée avec succès (rsync) !"
+                    # Upload HTTP classique (plus simple et fiable)
+                    live.video_file = video_file
+                    live.save()
+                    
+                    print(f"[DEBUG] Vidéo sauvegardée: {live.video_file.name}")
+                    
+                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                        return JsonResponse(
+                            {
+                                "success": True,
+                                "message": "Vidéo uploadée avec succès !",
+                                "redirect_url": reverse("dashboard"),
+                            }
                         )
-                        return redirect("dashboard")
-                    else:
-                        os.unlink(temp_path)
-                        messages.error(request, f"Erreur upload rsync: {msg}")
-                        return redirect("create_live")
+                    messages.success(request, "Vidéo uploadée avec succès !")
+                    return redirect("dashboard")
 
                 else:
                     # Pas de fichier vidéo
