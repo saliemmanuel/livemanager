@@ -76,7 +76,7 @@ def dashboard(request):
 def profile(request):
     """Profil utilisateur avec gestion des clés de streaming."""
     stream_keys = StreamKey.objects.filter(user=request.user).order_by("-created_at")
-    return render(request, "streams/profile.html", {"stream_keys": stream_keys})
+    return render(request, "streams/profile.html", {"user_stream_keys": stream_keys})
 
 
 @login_required
@@ -85,9 +85,17 @@ def add_stream_key(request):
     if request.method == "POST":
         form = StreamKeyForm(request.POST, user=request.user)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Clé de streaming ajoutée avec succès !")
-            return redirect("profile")
+            try:
+                stream_key = form.save()
+                print(f"[DEBUG] Clé de streaming créée: {stream_key.id} - {stream_key.name}")
+                messages.success(request, "Clé de streaming ajoutée avec succès !")
+                return redirect("profile")
+            except Exception as e:
+                print(f"[DEBUG] Erreur lors de la sauvegarde: {str(e)}")
+                messages.error(request, f"Erreur lors de la sauvegarde: {str(e)}")
+        else:
+            print(f"[DEBUG] Formulaire invalide: {form.errors}")
+            messages.error(request, f"Erreur de validation: {form.errors}")
     else:
         form = StreamKeyForm(user=request.user)
     return render(request, "streams/add_stream_key.html", {"form": form})
